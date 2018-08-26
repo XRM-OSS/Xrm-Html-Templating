@@ -1,0 +1,31 @@
+{
+  "name": "xrm.oss.emailtemplating",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "tslint": "tslint -c tslint.json -p tsconfig.json",
+    "prebuild": "npm run tslint",
+    "build": "tsc -t ES6 -m commonjs --jsx react --outDir ./dist && webpack"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^15.6.1",
+    "react-dom": "^15.6.1",
+    "react-markdown": "^3.1.0",
+    "xrm-webapi-client": "^3.6.9"
+  },
+  "devDependencies": {
+    "@types/bluebird": "^3.5.20",
+    "@types/react": "^15.6.14",
+    "@types/react-bootstrap": "^0.31.9",
+    "@types/react-dom": "^15.5.7",
+    "awesome-typescript-loader": "^3.5.0",
+    "react-bootstrap": "^0.31.5",
+    "source-map-loader": "^0.2.3",
+    "tslint": "^5.9.1",
+    "typescript": "^2.7.2",
+    "webpack": "^3.8.1"
+  }
+}
