@@ -4,6 +4,7 @@ declare module "react-email-editor" {
     }
 
     export default class EmailEditor extends React.Component<EmailEditorProps> {
+        style: any;
         public exportHtml: (callBack: ((data: {design: any, html: string}) => void)) => void;
         public loadDesign: (data: any) => void;
         public saveDesign: (callBack: ((design: any) => void)) => void;

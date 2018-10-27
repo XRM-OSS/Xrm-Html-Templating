@@ -1,14 +1,14 @@
 {
-  "name": "xrm.oss.emailtemplating",
+  "name": "xrm.oss.htmltemplating",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "tslint": "tslint -c tslint.json -p tsconfig.json",
+    "tslint": "tslint --fix -c tslint.json -p tsconfig.json",
     "prebuild": "npm run tslint",
     "build": "tsc -t ES6 -m commonjs --jsx react --outDir ./dist && webpack"
   },
-  "author": "",
+  "author": "Florian Krönert",
   "license": "MIT",
   "dependencies": {
     "react": "^15.6.1",
