@@ -10,6 +10,7 @@ interface State {
     loadingTemplate?: boolean;
     template?: HtmlTemplate;
     templates?: Array<HtmlTemplate>;
+    confirmDeletion?: boolean;
 }
 
 const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "500px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
@@ -42,12 +43,21 @@ export default class EmailTemplating extends React.PureComponent<any, State> {
     }
 
     delete = () => {
-      this.setState({requestPending: true});
+      this.setState({requestPending: true, confirmDeletion: false});
 
       (this.WebApiClient.Delete({ entityName: "oss_htmltemplate", entityId: this.state.template.oss_htmltemplateid}) as Promise<string>)
       .then(_ => {
-        this.setState({requestPending: false});
+        this.setState({requestPending: false, template: undefined});
+        this.Editor.loadDesign(defaultDesign);
       });
+    }
+
+    showDeletionConfirmation = () => {
+      this.setState({confirmDeletion: true});
+    }
+
+    hideDeletionConfirmation = () => {
+      this.setState({confirmDeletion: false});
     }
 
     save = () => {
@@ -104,6 +114,18 @@ export default class EmailTemplating extends React.PureComponent<any, State> {
 
               <Modal.Body>Please Wait...</Modal.Body>
             </Modal.Dialog>}
+          {this.state.confirmDeletion &&
+          <Modal.Dialog>
+          <Modal.Header>
+            <Modal.Title>Confirm</Modal.Title>
+          </Modal.Header>
+
+          <Modal.Body>Are you sure you want to delete this template?</Modal.Body>
+          <Modal.Footer>
+              <Button bsStyle="default" onClick={ this.delete }>Yes</Button>
+              <Button bsStyle="default" onClick={ this.hideDeletionConfirmation }>No</Button>
+          </Modal.Footer>
+        </Modal.Dialog>}
           <TemplateManager errorCallBack={undefined} templates={this.state.templates} templateCallBack={this.templateCallBack} isVisible={this.state.loadingTemplate} />
           {this.state.requestPending &&
             <Modal.Dialog>
@@ -116,8 +138,8 @@ export default class EmailTemplating extends React.PureComponent<any, State> {
           <ButtonToolbar style={{"padding-bottom": "10px"}}>
               <ButtonGroup>
                 <Button bsStyle="default" onClick={this.loadTemplate}>Load Template</Button>
-                <Button bsStyle="default" disabled={!this.state.template || !this.state.template.oss_htmltemplateid} onClick={this.save}>Save Template</Button>
-                <Button bsStyle="error" disabled={!this.state.template || !this.state.template.oss_htmltemplateid} onClick={this.delete}>Delete Template</Button>
+                <Button bsStyle="default" disabled={!this.state.template} onClick={this.save}>Save Template</Button>
+                <Button bsStyle="error" disabled={!this.state.template || !this.state.template.oss_htmltemplateid} onClick={this.showDeletionConfirmation}>Delete Template</Button>
               </ButtonGroup>
             </ButtonToolbar>
           <EmailEditor

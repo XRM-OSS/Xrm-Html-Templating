@@ -12,6 +12,7 @@ export interface TemplateManagerProps {
 
 interface TemplateManagerState {
     selectedTemplate?: HtmlTemplate;
+    templateName?: string;
 }
 
 export class TemplateManager extends React.PureComponent<TemplateManagerProps, TemplateManagerState> {
@@ -43,11 +44,13 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
     }
 
     fireCallBack = () => {
-        this.props.templateCallBack(this.state.selectedTemplate);
+        const template = !this.state.selectedTemplate.oss_htmltemplateid ? {...this.state.selectedTemplate, oss_name: this.state.templateName } : this.state.selectedTemplate;
+
+        this.props.templateCallBack(template);
     }
 
     onNameChange = (e: any) => {
-        this.setState({ selectedTemplate: {...this.state.selectedTemplate, oss_name: e.target.value} });
+        this.setState({ templateName: e.target.value });
     }
 
     render() {
@@ -72,14 +75,14 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
                 {this.state.selectedTemplate && !this.state.selectedTemplate.oss_htmltemplateid &&
                     <FormControl
                     type="text"
-                    value={this.state.selectedTemplate && this.state.selectedTemplate.oss_name}
+                    value={this.state.templateName}
                     placeholder="Enter text"
                     onChange={this.onNameChange}
                   />
                 }
               </Modal.Body>
               <Modal.Footer>
-                  <Button bsStyle="default" disabled={!this.state.selectedTemplate} onClick={this.fireCallBack}>Ok</Button>
+                  <Button bsStyle="default" disabled={!this.state.selectedTemplate || (!this.state.selectedTemplate.oss_htmltemplateid && !this.state.templateName )} onClick={this.fireCallBack}>Ok</Button>
                   <Button bsStyle="default" onClick={ this.cancel }>Cancel</Button>
               </Modal.Footer>
             </Modal.Dialog>}
