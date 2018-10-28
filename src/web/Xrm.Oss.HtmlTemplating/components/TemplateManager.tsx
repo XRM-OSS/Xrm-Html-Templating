@@ -58,7 +58,7 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
             {this.props.isVisible &&
               <Modal.Dialog>
               <Modal.Header>
-                <Modal.Title>Manage SDK Steps</Modal.Title>
+                <Modal.Title>Manage Templates</Modal.Title>
               </Modal.Header>
               <Modal.Body>
                   <ButtonToolbar style={{"padding-bottom": "10px"}}>
