@@ -4,6 +4,10 @@ Welcome, this is a project for allowing to create and edit HTML templates in Dyn
 # Supported Versions
 All CRM versions >= 8.0 (2016)
 
+# Requirements
+You need to have XTL installed before installing this solution, as it is used for providing placeholders inside your emails and for copying the template HTML to your emails on creation.
+You can get XTL for free [here](https://github.com/DigitalFlow/Xrm-Templating-Language).
+
 # Installation
 Install the managed solution from the [releases page](https://github.com/DigitalFlow/Xrm-Html-Templating/releases) of this repository and open it for creating and edition your templates.
 
