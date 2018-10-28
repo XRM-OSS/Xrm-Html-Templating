@@ -65,7 +65,7 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
                     <ButtonGroup>
                         <DropdownButton
                             bsStyle="default"
-                            title={this.state.selectedTemplate ? this.state.selectedTemplate.oss_name : "Select SDK Step" }
+                            title={this.state.selectedTemplate ? this.state.selectedTemplate.oss_name : "Select Template" }
                             id="templateSelect"
                         >
                               { [{oss_emailtemplateid: undefined, oss_name: "Create New"} as HtmlTemplate].concat(this.props.templates || []).map( (value) => <MenuItem onSelect={this.setSelectedTemplate} eventKey={value.oss_htmltemplateid}>{value.oss_name}</MenuItem> ) }
