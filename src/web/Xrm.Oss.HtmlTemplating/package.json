@@ -11,6 +11,7 @@
   "author": "Florian Krönert",
   "license": "MIT",
   "dependencies": {
+    "@types/xrm": "^9.0.7",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "react-email-editor": "^0.9.0",
