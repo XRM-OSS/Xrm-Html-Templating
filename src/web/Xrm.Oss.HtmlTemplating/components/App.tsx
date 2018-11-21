@@ -5,7 +5,12 @@ import EmailEditor from "react-email-editor";
 import { TemplateManager } from "./TemplateManager";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 
-interface State {
+interface EditorProps {
+  htmlField: string;
+  jsonField: string;
+}
+
+interface EditorState {
     requestPending?: boolean;
     loadingTemplate?: boolean;
     template?: HtmlTemplate;
@@ -16,7 +21,7 @@ interface State {
 
 const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "500px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
 
-export default class EmailTemplating extends React.PureComponent<any, State> {
+export default class EmailTemplating extends React.PureComponent<EditorProps, EditorState> {
     private WebApiClient: typeof WebApiClient;
     private Editor: EmailEditor;
 
@@ -33,7 +38,7 @@ export default class EmailTemplating extends React.PureComponent<any, State> {
     registerForm = () => {
       if (this.isEntityForm()) {
         window.parent.Xrm.Page.data.entity.addOnSave(this.saveForm);
-        const design = window.parent.Xrm.Page.getAttribute("oss_json").getValue();
+        const design = window.parent.Xrm.Page.getAttribute(this.props.jsonField).getValue();
 
         this.Editor.loadDesign((design && JSON.parse(design)) || defaultDesign);
       }
@@ -83,8 +88,8 @@ export default class EmailTemplating extends React.PureComponent<any, State> {
       saveEvent.getEventArgs().preventDefault();
 
       this.Editor.exportHtml(data => {
-        window.parent.Xrm.Page.getAttribute("oss_html").setValue(data.html);
-        window.parent.Xrm.Page.getAttribute("oss_json").setValue(JSON.stringify(data.design));
+        window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(data.html);
+        window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(data.design));
 
         this.setState({ allowSave: true }, this.triggerSave);
       });
@@ -134,7 +139,7 @@ export default class EmailTemplating extends React.PureComponent<any, State> {
     }
 
     isEntityForm = () => {
-      return window.parent && window.parent.Xrm && window.parent.Xrm.Page.data.entity.getEntityName() === "oss_htmltemplate";
+      return window.parent && window.parent.Xrm && window.parent.Xrm.Page.data.entity.getEntityName() !== "solution";
     }
 
     render() {
