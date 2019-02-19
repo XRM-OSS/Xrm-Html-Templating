@@ -1,9 +1,10 @@
 import * as React from "react";
 import WebApiClient from "xrm-webapi-client";
-import { Well, ButtonToolbar, ButtonGroup, Button, DropdownButton, MenuItem, Panel, InputGroup, Modal, FormGroup, ControlLabel, FormControl, ListGroup, ListGroupItem, Checkbox } from "react-bootstrap";
+import { ButtonToolbar, ButtonGroup, Button, InputGroup, Modal, FormControl, Navbar } from "react-bootstrap";
 import EmailEditor from "react-email-editor";
 import { TemplateManager } from "./TemplateManager";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
+import UserInputModal from "./UserInputModal";
 
 interface EditorProps {
   htmlField: string;
@@ -17,6 +18,7 @@ interface EditorState {
     templates?: Array<HtmlTemplate>;
     confirmDeletion?: boolean;
     allowSave?: boolean;
+    askForSaveAsName?: boolean;
 }
 
 const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "500px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
@@ -105,7 +107,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
             oss_html: data.html,
             oss_name: this.state.template.oss_name
           }})
-          .then((response: any) => {
+          .then(() => {
             this.setState({requestPending: false});
           });
         }
@@ -121,6 +123,27 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
             this.setState({template: {...this.state.template, oss_htmltemplateid: id}, requestPending: false});
           });
         }
+      });
+    }
+
+    saveAs = (name: string) => {
+      this.setState({requestPending: true});
+
+      this.Editor.exportHtml(data => {
+          this.WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
+            oss_json: JSON.stringify(data.design),
+            oss_html: data.html,
+            oss_name: name
+          }})
+          .then((response: string) => {
+            const id = response.substr(response.indexOf("(") + 1, 36);
+
+            this.setState({
+              template: {...this.state.template, oss_htmltemplateid: id, oss_name: name},
+              requestPending: false,
+              askForSaveAsName: false
+            });
+          });
       });
     }
 
@@ -142,9 +165,26 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
       return window.parent && window.parent.Xrm && window.parent.Xrm.Page.data.entity.getEntityName() !== "solution";
     }
 
+    askForSaveAsName = () => {
+      this.setState({askForSaveAsName: true});
+    }
+
+    closeAskForSaveAsName = () => {
+      this.setState({askForSaveAsName: false});
+    }
+
+    setName = (e: any) => {
+      const name = e.target.value;
+
+      this.setState((state) => ({
+        template: {...state.template, oss_name: name}
+      }));
+    }
+
     render() {
         return (
         <div style={{display: "flex", flexDirection: "column", position: "relative", height: "100%"}}>
+          {this.state.askForSaveAsName && <UserInputModal title="Save As" text="Enter the name of the copied template" yesCallBack={this.saveAs} noCallBack={this.closeAskForSaveAsName} />}
           {this.state.requestPending &&
               <Modal.Dialog>
               <Modal.Header>
@@ -175,12 +215,21 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
             <Modal.Body>Please Wait...</Modal.Body>
           </Modal.Dialog>}
           { !this.isEntityForm() &&
-            <ButtonToolbar style={{"padding-bottom": "10px"}}>
-                <ButtonGroup>
-                  <Button bsStyle="default" onClick={this.loadTemplate}>Load Template</Button>
-                  <Button bsStyle="default" disabled={!this.state.template} onClick={this.saveSolution}>Save Template</Button>
-                  <Button bsStyle="error" disabled={!this.state.template || !this.state.template.oss_htmltemplateid} onClick={this.showDeletionConfirmation}>Delete Template</Button>
-                </ButtonGroup>
+              <ButtonToolbar style={{"padding-bottom": "10px"}}>
+                  <ButtonGroup>
+                    <Button bsStyle="default" onClick={this.loadTemplate}>Load</Button>
+                    <Button bsStyle="default" disabled={!this.state.template} onClick={this.saveSolution}>Save</Button>
+                    <Button bsStyle="default" disabled={!this.state.template} onClick={this.askForSaveAsName}>Save As</Button>
+                    <Button bsStyle="error" disabled={!this.state.template || !this.state.template.oss_htmltemplateid} onClick={this.showDeletionConfirmation}>Delete</Button>
+                  </ButtonGroup>
+                  <InputGroup>
+                    <FormControl
+                      type="text"
+                      disabled={!this.state.template}
+                      value={ this.state.template ? this.state.template.oss_name : "" }
+                      onChange={ this.setName }
+                    />
+                  </InputGroup>
               </ButtonToolbar>
           }
           <EmailEditor
