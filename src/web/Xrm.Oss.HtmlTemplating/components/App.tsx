@@ -39,10 +39,18 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
 
     registerForm = () => {
       if (this.isEntityForm()) {
-        window.parent.Xrm.Page.data.entity.addOnSave(this.saveForm);
         const design = window.parent.Xrm.Page.getAttribute(this.props.jsonField).getValue();
 
         this.Editor.loadDesign((design && JSON.parse(design)) || defaultDesign);
+
+        (window as any).unlayer.addEventListener("design:updated", () => {
+          if (this.isEntityForm()) {
+            this.Editor.exportHtml(data => {
+                window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(data.html);
+                window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(data.design));
+            });
+          }
+        });
       }
     }
 
@@ -79,22 +87,6 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
 
     triggerSave = () => {
       window.parent.Xrm.Page.data.entity.save();
-    }
-
-    saveForm = (saveEvent?: Xrm.Events.SaveEventContext) => {
-      if (this.state.allowSave) {
-        this.setState({ allowSave: false });
-        return;
-      }
-
-      saveEvent.getEventArgs().preventDefault();
-
-      this.Editor.exportHtml(data => {
-        window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(data.html);
-        window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(data.design));
-
-        this.setState({ allowSave: true }, this.triggerSave);
-      });
     }
 
     saveSolution = () => {
