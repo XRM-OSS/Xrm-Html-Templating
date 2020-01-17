@@ -10,7 +10,6 @@ import { XtlSnippet } from "../domain/XtlSnippet";
 interface EditorProps {
   htmlField: string;
   jsonField: string;
-  snippets: MergeTags;
 }
 
 interface EditorState {
@@ -21,9 +20,10 @@ interface EditorState {
     confirmDeletion?: boolean;
     allowSave?: boolean;
     askForSaveAsName?: boolean;
+    mergeTags?: MergeTags;
 }
 
-const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "500px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
+const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "800px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
 
 export default class EmailTemplating extends React.PureComponent<EditorProps, EditorState> {
     private WebApiClient: typeof WebApiClient;
@@ -37,6 +37,66 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
 
         // Webpack should import WebApiClient from global itself, but somehow it doesn't
         this.WebApiClient = (window as any).WebApiClient;
+    }
+
+    retrieveMergeTags = () => {
+      WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true})
+      .then(({ value: snippets}: {value: Array<XtlSnippet>}) => {
+          const resolveTags = (data: Array<XtlSnippet>, children?: Array<XtlSnippet>, parent?: XtlSnippet): MergeTags => {
+            return (children || data).reduce((all, cur) => {
+                const currentChildren = data.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
+
+                if (parent) {
+                    if (currentChildren.length) {
+                        return {
+                            ...all,
+                            [cur.oss_xtlsnippetid]: {
+                                name: cur.oss_name,
+                                mergeTags: resolveTags(data, currentChildren, cur)
+                            }
+                        };
+                    }
+                    else {
+                        return {
+                            ...all,
+                            [cur.oss_xtlsnippetid]: {
+                                name: cur.oss_name,
+                                value: `\${{${cur.oss_xtlexpression}}}`
+                            }
+                        };
+                    }
+                }
+
+                if (cur._oss_parentsnippet_value) {
+                    return all;
+                }
+
+                if (currentChildren.length && !cur._oss_parentsnippet_value) {
+                    all[cur.oss_xtlsnippetid] = {
+                        name: cur.oss_name,
+                        mergeTags: resolveTags(data, currentChildren, cur)
+                    };
+                }
+                else {
+                    all[cur.oss_xtlsnippetid] = {
+                        name: cur.oss_name,
+                        value: `\${{${cur.oss_xtlexpression}}}`
+                    };
+                }
+
+                return all;
+            }, {} as MergeTags);
+        };
+
+        this.setState({ mergeTags: resolveTags(snippets) });
+      })
+      .catch((e: any) => {
+        alert("Seems your user is missing read privileges to the oss_xtlsnippet entity. Please ask your system administrator for security permissions");
+      });
+    }
+
+    componentDidMount() {
+      this.retrieveMergeTags();
     }
 
     registerForm = () => {
@@ -226,16 +286,21 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
                   </InputGroup>
               </ButtonToolbar>
           }
-          <EmailEditor
-            onLoad={this.registerForm}
-            options={{
-              customJS: [
-                window.location.href.substr(0, window.location.href.indexOf("/html/xrm_html_templating.html")) + "/js/unlayerCustom.js"
-              ],
-              mergeTags: this.props.snippets
-            }}
-            ref={(editor: EmailEditor) => this.Editor = editor}
-          />
+          { this.state.mergeTags &&
+            <EmailEditor
+              onLoad={this.registerForm}
+              projectId={1071}
+              options={{
+                mergeTags: this.state.mergeTags,
+                customJS: [
+                  `
+                    console.log('I am custom JS!');
+                  `
+                ]
+              }}
+              ref={(editor: EmailEditor) => this.Editor = editor}
+            />
+            }
         </div>
         );
     }
