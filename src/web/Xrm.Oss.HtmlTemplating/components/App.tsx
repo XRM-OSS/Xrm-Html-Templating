@@ -1,14 +1,16 @@
 import * as React from "react";
 import WebApiClient from "xrm-webapi-client";
 import { ButtonToolbar, ButtonGroup, Button, InputGroup, Modal, FormControl, Navbar } from "react-bootstrap";
-import EmailEditor from "react-email-editor";
+import EmailEditor, { MergeTags } from "react-email-editor";
 import { TemplateManager } from "./TemplateManager";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 import UserInputModal from "./UserInputModal";
+import { XtlSnippet } from "../domain/XtlSnippet";
 
 interface EditorProps {
   htmlField: string;
   jsonField: string;
+  snippets: MergeTags;
 }
 
 interface EditorState {
@@ -226,6 +228,12 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
           }
           <EmailEditor
             onLoad={this.registerForm}
+            options={{
+              customJS: [
+                window.location.href.substr(0, window.location.href.indexOf("/html/xrm_html_templating.html")) + "/js/unlayerCustom.js"
+              ],
+              mergeTags: this.props.snippets
+            }}
             ref={(editor: EmailEditor) => this.Editor = editor}
           />
         </div>

@@ -29,11 +29,7 @@ module.exports = {
     // This is important because it allows us to avoid bundling all of our
     // dependencies, which allows browsers to cache those libraries between builds.
     externals: {
-        "xrm-webapi-client": {
-            commonjs2: "xrm-webapi-client",
-            amd: "xrm-webapi-client",
-            root: "WebApiClient"
-        },
+        "xrm-webapi-client": "WebApiClient",
         "react": "React",
         "react-dom": "ReactDOM"
     },
