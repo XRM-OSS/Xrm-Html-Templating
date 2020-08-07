@@ -40,11 +40,12 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
     }
 
     retrieveMergeTags = () => {
-      WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true})
+      WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_uniquename,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true})
       .then(({ value: snippets}: {value: Array<XtlSnippet>}) => {
           const resolveTags = (data: Array<XtlSnippet>, children?: Array<XtlSnippet>, parent?: XtlSnippet): MergeTags => {
             return (children || data).reduce((all, cur) => {
                 const currentChildren = data.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
+                const value = cur.oss_uniquename ? `\${{Snippet("${cur.oss_uniquename}")}}` : `\${{${cur.oss_xtlexpression}}}`;
 
                 if (parent) {
                     if (currentChildren.length) {
@@ -61,7 +62,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
                             ...all,
                             [cur.oss_xtlsnippetid]: {
                                 name: cur.oss_name,
-                                value: `\${{${cur.oss_xtlexpression}}}`
+                                value: value
                             }
                         };
                     }
@@ -80,7 +81,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
                 else {
                     all[cur.oss_xtlsnippetid] = {
                         name: cur.oss_name,
-                        value: `\${{${cur.oss_xtlexpression}}}`
+                        value: value
                     };
                 }
 
