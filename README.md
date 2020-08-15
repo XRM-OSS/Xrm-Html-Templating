@@ -29,6 +29,8 @@ A good advice is to build snippets using the MergeTag feature. You can create hi
 Inside the HTML editor, all XTL Snippets that you defined are shown and can be inserted in your template.
 That way you can write XTL expressions just once and use them everywhere. A nice bonus is that you can update these XTL snippets and all templates will just use the new values on the next execution.
 
+![image](https://user-images.githubusercontent.com/4287938/90307312-0dd9cf80-ded5-11ea-838c-e272f8a680ba.png)
+
 # Impressions
 ![image](https://user-images.githubusercontent.com/4287938/47609785-d969fa80-da45-11e8-8ad5-50f99440c069.png)
 
