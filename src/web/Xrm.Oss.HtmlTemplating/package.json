@@ -25,7 +25,7 @@
     "awesome-typescript-loader": "^3.5.0",
     "react-bootstrap": "^0.31.5",
     "react-email-editor": "^1.0.0",
-    "source-map-loader": "^0.2.3",
+    "source-map-loader": "^0.2.4",
     "styled-components": "^3.4.10",
     "tslint": "^5.9.1",
     "typescript": "^2.7.2",
