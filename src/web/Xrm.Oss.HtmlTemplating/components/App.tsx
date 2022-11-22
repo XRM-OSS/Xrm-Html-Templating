@@ -1,5 +1,5 @@
 import * as React from "react";
-import WebApiClient from "xrm-webapi-client";
+import * as WebApiClient from "xrm-webapi-client";
 import { ButtonToolbar, ButtonGroup, Button, InputGroup, Modal, FormControl, Navbar } from "react-bootstrap";
 import EmailEditor, { MergeTag } from "react-email-editor";
 import { TemplateManager } from "./TemplateManager";
@@ -27,7 +27,6 @@ const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_
 const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "800px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
 
 export default class EmailTemplating extends React.PureComponent<EditorProps, EditorState> {
-    private WebApiClient: typeof WebApiClient;
     private Editor: EmailEditor;
 
     constructor(props: any) {
@@ -35,9 +34,6 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
 
         this.state = {
         };
-
-        // Webpack should import WebApiClient from global itself, but somehow it doesn't
-        this.WebApiClient = (window as any).WebApiClient;
     }
 
     retrieveMergeTags = () => {
@@ -112,16 +108,21 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
         const design = window.parent.Xrm.Page.getAttribute(this.props.jsonField).getValue();
 
         this.Editor.loadDesign((design && JSON.parse(design)) || defaultDesign);
+      }
+    }
 
-        (window as any).unlayer.addEventListener("design:updated", () => {
-          if (this.isEntityForm()) {
-            this.Editor.exportHtml(data => {
-                window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(this.reviveXtlExpressions(data.html));
-                window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(this.reviveXtlExpressionJson(data.design)));
-            });
-          }
+    onUpdate = () => {
+      if (this.isEntityForm()) {
+        this.Editor.exportHtml(data => {
+            window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(this.reviveXtlExpressions(data.html));
+            window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(this.reviveXtlExpressionJson(data.design)));
         });
       }
+    }
+
+    initEditor = () => {
+      this.registerForm();
+      this.Editor.addEventListener("design:updated", this.onUpdate);
     }
 
     templateCallBack = (template: HtmlTemplate) => {
@@ -140,7 +141,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
     delete = () => {
       this.setState({requestPending: true, confirmDeletion: false});
 
-      (this.WebApiClient.Delete({ entityName: "oss_htmltemplate", entityId: this.state.template.oss_htmltemplateid}) as Promise<string>)
+      (WebApiClient.Delete({ entityName: "oss_htmltemplate", entityId: this.state.template.oss_htmltemplateid}) as Promise<string>)
       .then(_ => {
         this.setState({requestPending: false, template: undefined});
         this.Editor.loadDesign(defaultDesign);
@@ -167,7 +168,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
         const htmlData = this.reviveXtlExpressions(data.html);
 
         if (this.state.template.oss_htmltemplateid) {
-          this.WebApiClient.Update({entityName: "oss_htmltemplate", entityId: this.state.template.oss_htmltemplateid, entity: {
+          WebApiClient.Update({entityName: "oss_htmltemplate", entityId: this.state.template.oss_htmltemplateid, entity: {
             oss_json: jsonData,
             oss_html: htmlData,
             oss_name: this.state.template.oss_name
@@ -177,7 +178,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
           });
         }
         else {
-          this.WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
+          WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
             oss_json: jsonData,
             oss_html: htmlData,
             oss_name: this.state.template.oss_name
@@ -198,7 +199,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
           const jsonData = JSON.stringify(this.reviveXtlExpressionJson(data.design));
           const htmlData = this.reviveXtlExpressions(data.html);
 
-          this.WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
+          WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
             oss_json: jsonData,
             oss_html: htmlData,
             oss_name: name
@@ -216,7 +217,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
     }
 
     retrieveTemplates = () => {
-      return this.WebApiClient.Retrieve({entityName: "oss_htmltemplate", queryParams: "?$select=oss_json,oss_html,oss_name"});
+      return WebApiClient.Retrieve({entityName: "oss_htmltemplate", queryParams: "?$select=oss_json,oss_html,oss_name"});
     }
 
     loadTemplate = () => {
@@ -302,12 +303,12 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
           }
           { this.state.mergeTags &&
             <EmailEditor
-              onLoad={this.registerForm}
               projectId={1071}
               options={{
                 mergeTags: this.state.mergeTags
               }}
               ref={(editor: EmailEditor) => this.Editor = editor}
+              onReady={this.initEditor}
             />
             }
         </div>

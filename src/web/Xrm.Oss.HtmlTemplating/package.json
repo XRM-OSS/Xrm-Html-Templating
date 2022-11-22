@@ -14,7 +14,7 @@
     "@types/xrm": "^9.0.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "xrm-webapi-client": "^3.6.9"
+    "xrm-webapi-client": "^4.0.9"
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.20",
@@ -22,7 +22,8 @@
     "@types/react-bootstrap": "^0.32.32",
     "@types/react-dom": "^18.0.9",
     "@types/react-email-editor": "^1.5.1",
-    "react-bootstrap": "^0.31.5",
+    "bootstrap": "^3.4.1",
+    "react-bootstrap": "^0.33.1",
     "react-email-editor": "^1.6.3",
     "source-map-loader": "^0.2.3",
     "ts-loader": "^9.4.1",

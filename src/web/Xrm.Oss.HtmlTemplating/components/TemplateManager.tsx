@@ -1,5 +1,4 @@
 import * as React from "react";
-import WebApiClient from "xrm-webapi-client";
 import { Well, ButtonToolbar, ButtonGroup, Button, DropdownButton, MenuItem, Modal, FormGroup, ControlLabel, FormControl } from "react-bootstrap";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 
