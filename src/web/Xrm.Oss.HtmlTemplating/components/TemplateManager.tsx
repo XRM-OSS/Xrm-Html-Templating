@@ -61,7 +61,7 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
                 <Modal.Title>Manage Templates</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                  <ButtonToolbar style={{"padding-bottom": "10px"}}>
+                  <ButtonToolbar style={{"paddingBottom": "10px"}}>
                     <ButtonGroup>
                         <DropdownButton
                             bsStyle="default"

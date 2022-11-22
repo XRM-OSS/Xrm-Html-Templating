@@ -1,7 +1,7 @@
 import * as React from "react";
 import WebApiClient from "xrm-webapi-client";
 import { ButtonToolbar, ButtonGroup, Button, InputGroup, Modal, FormControl, Navbar } from "react-bootstrap";
-import EmailEditor, { MergeTags } from "react-email-editor";
+import EmailEditor, { MergeTag } from "react-email-editor";
 import { TemplateManager } from "./TemplateManager";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 import UserInputModal from "./UserInputModal";
@@ -20,9 +20,10 @@ interface EditorState {
     confirmDeletion?: boolean;
     allowSave?: boolean;
     askForSaveAsName?: boolean;
-    mergeTags?: MergeTags;
+    mergeTags?: MergeTag[];
 }
 
+const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_armor/gm;
 const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "800px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
 
 export default class EmailTemplating extends React.PureComponent<EditorProps, EditorState> {
@@ -42,54 +43,28 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
     retrieveMergeTags = () => {
       WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_uniquename,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true})
       .then(({ value: snippets}: {value: Array<XtlSnippet>}) => {
-          const resolveTags = (data: Array<XtlSnippet>, children?: Array<XtlSnippet>, parent?: XtlSnippet): MergeTags => {
-            return (children || data).reduce((all, cur) => {
-                const currentChildren = data.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
-                const value = cur.oss_uniquename ? `\${{Snippet("${cur.oss_uniquename}")}}` : `\${{${cur.oss_xtlexpression}}}`;
+          const resolveTags = (children?: Array<XtlSnippet>): MergeTag[] => {
+            return (children).reduce((all, cur) => {
+                const currentChildren = snippets.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
+                const snippetValue: string = cur.oss_uniquename ? `\${{Snippet("${cur.oss_uniquename}")}}` : `\${{${cur.oss_xtlexpression}}}`;
+                const asciiArmor = `xtl_ascii_armor__${btoa(snippetValue)}__xtl_ascii_armor`;
 
-                if (parent) {
-                    if (currentChildren.length) {
-                        return {
-                            ...all,
-                            [cur.oss_xtlsnippetid]: {
-                                name: cur.oss_name,
-                                mergeTags: resolveTags(data, currentChildren, cur)
-                            }
-                        };
-                    }
-                    else {
-                        return {
-                            ...all,
-                            [cur.oss_xtlsnippetid]: {
-                                name: cur.oss_name,
-                                value: value
-                            }
-                        };
-                    }
-                }
-
-                if (cur._oss_parentsnippet_value) {
-                    return all;
-                }
-
-                if (currentChildren.length && !cur._oss_parentsnippet_value) {
-                    all[cur.oss_xtlsnippetid] = {
-                        name: cur.oss_name,
-                        mergeTags: resolveTags(data, currentChildren, cur)
-                    };
-                }
-                else {
-                    all[cur.oss_xtlsnippetid] = {
-                        name: cur.oss_name,
-                        value: value
-                    };
-                }
-
-                return all;
-            }, {} as MergeTags);
+                return [
+                  ...all,
+                  {
+                    name: cur.oss_name,
+                    mergeTags: currentChildren.length ? resolveTags(currentChildren) : undefined,
+                    value: currentChildren.length ? undefined : asciiArmor,
+                    sample: cur.oss_name
+                  }
+                ];
+            }, [] as MergeTag[]);
         };
 
-        this.setState({ mergeTags: resolveTags(snippets) });
+        const rootElements = snippets.filter(s => !s._oss_parentsnippet_value);
+        const tags = resolveTags(rootElements);
+
+        this.setState({ mergeTags: tags });
       })
       .catch((e: any) => {
         alert("Seems your user is missing read privileges to the oss_xtlsnippet entity. Please ask your system administrator for security permissions");
@@ -100,6 +75,38 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
       this.retrieveMergeTags();
     }
 
+    reviveXtlExpressions = (expression: any) => {
+      if (!expression || typeof(expression) !== "string") {
+        return expression;
+      }
+
+      return expression.replace(asciiArmorRegex, (m, g) => {
+        return atob(g);
+      });
+    };
+
+    reviveXtlExpressionJson = (object: {[key: string]: any}) => {
+      if (!object) {
+        return object;
+      }
+
+      const keys = Object.keys(object);
+
+      return keys.reduce((all, cur) => {
+        if (Array.isArray(object[cur])) {
+          all[cur] = (object[cur] as Array<any>).map(e => this.reviveXtlExpressionJson(e));
+        }
+        else if (typeof(object[cur]) === "object") {
+          all[cur] = this.reviveXtlExpressionJson(object[cur]);
+        }
+        else {
+          all[cur] = this.reviveXtlExpressions(object[cur]);
+        }
+
+        return all;
+      }, {} as {[key: string]: any});
+    };
+
     registerForm = () => {
       if (this.isEntityForm()) {
         const design = window.parent.Xrm.Page.getAttribute(this.props.jsonField).getValue();
@@ -109,8 +116,8 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
         (window as any).unlayer.addEventListener("design:updated", () => {
           if (this.isEntityForm()) {
             this.Editor.exportHtml(data => {
-                window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(data.html);
-                window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(data.design));
+                window.parent.Xrm.Page.getAttribute(this.props.htmlField).setValue(this.reviveXtlExpressions(data.html));
+                window.parent.Xrm.Page.getAttribute(this.props.jsonField).setValue(JSON.stringify(this.reviveXtlExpressionJson(data.design)));
             });
           }
         });
@@ -156,10 +163,13 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
       this.setState({requestPending: true});
 
       this.Editor.exportHtml(data => {
+        const jsonData = JSON.stringify(this.reviveXtlExpressionJson(data.design));
+        const htmlData = this.reviveXtlExpressions(data.html);
+
         if (this.state.template.oss_htmltemplateid) {
           this.WebApiClient.Update({entityName: "oss_htmltemplate", entityId: this.state.template.oss_htmltemplateid, entity: {
-            oss_json: JSON.stringify(data.design),
-            oss_html: data.html,
+            oss_json: jsonData,
+            oss_html: htmlData,
             oss_name: this.state.template.oss_name
           }})
           .then(() => {
@@ -168,8 +178,8 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
         }
         else {
           this.WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
-            oss_json: JSON.stringify(data.design),
-            oss_html: data.html,
+            oss_json: jsonData,
+            oss_html: htmlData,
             oss_name: this.state.template.oss_name
           }})
           .then((response: string) => {
@@ -185,9 +195,12 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
       this.setState({requestPending: true});
 
       this.Editor.exportHtml(data => {
+          const jsonData = JSON.stringify(this.reviveXtlExpressionJson(data.design));
+          const htmlData = this.reviveXtlExpressions(data.html);
+
           this.WebApiClient.Create({entityName: "oss_htmltemplate", entity: {
-            oss_json: JSON.stringify(data.design),
-            oss_html: data.html,
+            oss_json: jsonData,
+            oss_html: htmlData,
             oss_name: name
           }})
           .then((response: string) => {
@@ -270,7 +283,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
             <Modal.Body>Please Wait...</Modal.Body>
           </Modal.Dialog>}
           { !this.isEntityForm() &&
-              <ButtonToolbar style={{"padding-bottom": "10px"}}>
+              <ButtonToolbar style={{"paddingBottom": "10px"}}>
                   <ButtonGroup>
                     <Button bsStyle="default" onClick={this.loadTemplate}>Load</Button>
                     <Button bsStyle="default" disabled={!this.state.template} onClick={this.saveSolution}>Save</Button>
@@ -292,12 +305,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
               onLoad={this.registerForm}
               projectId={1071}
               options={{
-                mergeTags: this.state.mergeTags,
-                customJS: [
-                  `
-                    console.log('I am custom JS!');
-                  `
-                ]
+                mergeTags: this.state.mergeTags
               }}
               ref={(editor: EmailEditor) => this.Editor = editor}
             />
