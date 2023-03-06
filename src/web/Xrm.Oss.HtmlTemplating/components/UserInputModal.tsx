@@ -1,10 +1,10 @@
+import { DefaultButton, Dialog, DialogFooter, DialogType, PrimaryButton } from "@fluentui/react";
 import * as React from "react";
-import { Modal, Button } from "react-bootstrap";
 
 interface UserInputModalProps {
   title: string;
   text: string;
-  yesCallBack?: (value: string) => void;
+  yesCallBack?: (value?: string) => void;
   noCallBack?: () => void;
   finally?: () => void;
 }
@@ -26,13 +26,13 @@ export default class UserInputModal extends React.PureComponent<UserInputModalPr
     this.setValue = this.setValue.bind(this);
   }
 
-  callIfDefined(callBack: (value?: string) => void, value?: string) {
+  callIfDefined(callBack?: (value?: string) => void, value?: string) {
     if (callBack) {
       callBack(value);
     }
   }
 
-  setValue (e: any) {
+  setValue(e: any) {
     const text = e.target.value;
 
     this.setState({
@@ -53,22 +53,24 @@ export default class UserInputModal extends React.PureComponent<UserInputModalPr
 
   render() {
     return (
-      <div className="static-modal">
-        <Modal.Dialog>
-          <Modal.Header>
-            <Modal.Title>{ this.props.title }</Modal.Title>
-          </Modal.Header>
-
-          <Modal.Body>
-            <p>{ this.props.text }</p>
-            <input type="text" value={ this.state.value } onChange={ this.setValue }/>
-          </Modal.Body>
-
-          <Modal.Footer>
-            <Button onClick={ () => this.triggerCallback(true) } bsStyle="primary">Ok</Button>
-            <Button onClick={ () => this.triggerCallback(false) } bsStyle="default">Cancel</Button>
-          </Modal.Footer>
-        </Modal.Dialog>
-      </div>);
+      <Dialog
+        hidden={false}
+        onDismiss={() => this.triggerCallback(false)}
+        dialogContentProps={{
+          type: DialogType.largeHeader,
+          title: this.props.title,
+          subText: this.props.text
+        }}
+        modalProps={{
+          isBlocking: false,
+          styles: { main: { maxWidth: 450 } },
+        }}
+      >
+        <DialogFooter>
+          <input type="text" value={this.state.value} onChange={this.setValue} />
+          <PrimaryButton onClick={() => this.triggerCallback(true)} text="Ok" />
+          <DefaultButton onClick={() => this.triggerCallback(false)} text="Cancel" />
+        </DialogFooter>
+      </Dialog>);
   }
 }

@@ -1,12 +1,11 @@
 import * as React from "react";
-import { Well, ButtonToolbar, ButtonGroup, Button, DropdownButton, MenuItem, Modal, FormGroup, ControlLabel, FormControl } from "react-bootstrap";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 
 export interface TemplateManagerProps {
-    templateCallBack: (template: HtmlTemplate) => void;
-    errorCallBack: (e: any) => void;
+    templateCallBack: (template?: HtmlTemplate) => void;
+    errorCallBack?: (e: any) => void;
     isVisible: boolean;
-    templates: Array<HtmlTemplate>;
+    templates?: Array<HtmlTemplate>;
 }
 
 interface TemplateManagerState {
@@ -35,7 +34,7 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
             });
         }
 
-        const template = this.props.templates.find((template) => template.oss_htmltemplateid === eventKey);
+        const template = this.props.templates?.find((template) => template.oss_htmltemplateid === eventKey);
 
         this.setState({
             selectedTemplate: template
@@ -43,7 +42,7 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
     }
 
     fireCallBack = () => {
-        const template = !this.state.selectedTemplate.oss_htmltemplateid ? {...this.state.selectedTemplate, oss_name: this.state.templateName } : this.state.selectedTemplate;
+        const template = !this.state.selectedTemplate?.oss_htmltemplateid ? {...this.state.selectedTemplate, oss_name: this.state.templateName } : this.state.selectedTemplate;
 
         this.props.templateCallBack(template);
     }
@@ -53,7 +52,7 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
     }
 
     render() {
-        return <div>
+        return <div></div>/*
             {this.props.isVisible &&
               <Modal.Dialog>
               <Modal.Header>
@@ -85,6 +84,6 @@ export class TemplateManager extends React.PureComponent<TemplateManagerProps, T
                   <Button bsStyle="default" onClick={ this.cancel }>Cancel</Button>
               </Modal.Footer>
             </Modal.Dialog>}
-        </div>;
+        </div>;*/
     }
 }

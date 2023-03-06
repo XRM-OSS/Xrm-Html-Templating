@@ -6,6 +6,9 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
     private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
     private notifyOutputChanged: () => void;
 
+    private jsonInput = "";
+    private htmlOutput = "";
+
     /**
      * Empty constructor.
      */
@@ -24,7 +27,17 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
         state: ComponentFramework.Dictionary
     ): void {
         this.notifyOutputChanged = notifyOutputChanged;
+
+        this.jsonInput = context.parameters.jsonInputField.raw ?? "";
+        this.htmlOutput = context.parameters.htmlOutputField.raw ?? "";
     }
+
+    private updateOutputs = (jsonInput: string, htmlOutput: string) => {
+        this.jsonInput = jsonInput;
+        this.htmlOutput = htmlOutput;
+
+        this.notifyOutputChanged();
+    };
 
     /**
      * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
@@ -32,7 +45,11 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
      * @returns ReactElement root react element for the control
      */
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
-        const props: AppProps = { name: 'Hello, World!' };
+        const props: AppProps = { 
+            pcfContext: context,
+            updateOutputs: this.updateOutputs
+        };
+
         return React.createElement(
             App, props
         );
@@ -43,7 +60,10 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
      * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
      */
     public getOutputs(): IOutputs {
-        return { };
+        return {
+            jsonInputField: this.jsonInput,
+            htmlOutputField: this.htmlOutput
+        };
     }
 
     /**
