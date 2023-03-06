@@ -1,23 +1,6 @@
 {
+    "extends": "./node_modules/pcf-scripts/tsconfig_base.json",
     "compilerOptions": {
-        "outDir": "./dist/",
-        "sourceMap": true,
-        "noImplicitAny": true,
-        "module": "ES6",
-        "moduleResolution": "node",
-        "allowJs": true,
-        "baseUrl": ".",
-        "target": "es6",
-        "jsx": "react",
-        "paths": {
-            "*": [
-                "./node_modules/*",
-                "./types/*"
-            ]
-        }
-    },
-    "include": [
-        "./components/**/*",
-        "./scripts/**/*"
-    ]
+        "typeRoots": ["node_modules/@types"],
+    }
 }

@@ -1,18 +1,17 @@
 import * as React from "react";
 import * as WebApiClient from "xrm-webapi-client";
-import { ButtonToolbar, ButtonGroup, Button, InputGroup, Modal, FormControl, Navbar } from "react-bootstrap";
 import EmailEditor, { MergeTag } from "react-email-editor";
 import { TemplateManager } from "./TemplateManager";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 import UserInputModal from "./UserInputModal";
 import { XtlSnippet } from "../domain/XtlSnippet";
 
-interface EditorProps {
+export interface AppProps {
   htmlField: string;
   jsonField: string;
 }
 
-interface EditorState {
+interface AppState {
     requestPending?: boolean;
     loadingTemplate?: boolean;
     template?: HtmlTemplate;
@@ -26,7 +25,7 @@ interface EditorState {
 const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_armor/gm;
 const defaultDesign: any = {"counters": {"u_column": 1, "u_row": 1}, "body": {"rows": [{"cells": [1], "columns": [{"contents": [], "values": {"_meta": {"htmlID": "u_column_1", "htmlClassNames": "u_column"}}}], "values": {"backgroundColor": "", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "padding": "10px", "columnsBackgroundColor": "", "_meta": {"htmlID": "u_row_1", "htmlClassNames": "u_row"}, "selectable": true, "draggable": true, "deletable": true}}], "values": {"backgroundColor": "#e7e7e7", "backgroundImage": {"url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false}, "contentWidth": "800px", "fontFamily": {"label": "Arial", "value": "arial,helvetica,sans-serif"}, "_meta": {"htmlID": "u_body", "htmlClassNames": "u_body"}}}};
 
-export default class EmailTemplating extends React.PureComponent<EditorProps, EditorState> {
+export class App extends React.PureComponent<AppProps, AppState> {
     private Editor: EmailEditor;
 
     constructor(props: any) {
@@ -40,7 +39,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
       WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_uniquename,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true})
       .then(({ value: snippets}: {value: Array<XtlSnippet>}) => {
           const resolveTags = (children?: Array<XtlSnippet>): MergeTag[] => {
-            return (children).reduce((all, cur) => {
+            return (children ?? []).reduce((all, cur) => {
                 const currentChildren = snippets.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
                 const snippetValue: string = cur.oss_uniquename ? `\${{Snippet("${cur.oss_uniquename}")}}` : `\${{${cur.oss_xtlexpression}}}`;
                 const asciiArmor = `xtl_ascii_armor__${btoa(snippetValue)}__xtl_ascii_armor`;
@@ -52,7 +51,7 @@ export default class EmailTemplating extends React.PureComponent<EditorProps, Ed
                     mergeTags: currentChildren.length ? resolveTags(currentChildren) : undefined,
                     value: currentChildren.length ? undefined : asciiArmor,
                     sample: cur.oss_name
-                  }
+                  } as MergeTag
                 ];
             }, [] as MergeTag[]);
         };
