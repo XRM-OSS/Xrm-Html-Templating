@@ -47,6 +47,7 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
         const props: AppProps = { 
             pcfContext: context,
+            jsonInput: context.parameters.jsonInputField.raw,
             updateOutputs: this.updateOutputs
         };
 
