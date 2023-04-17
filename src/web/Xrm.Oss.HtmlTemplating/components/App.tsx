@@ -5,7 +5,7 @@ import { HtmlTemplate } from "../domain/HtmlTemplate";
 import UserInputModal from "./UserInputModal";
 import { XtlSnippet } from "../domain/XtlSnippet";
 import { IInputs } from "../HTMLWYSIWYGEDITOR/generated/ManifestTypes";
-import { CommandBar, DefaultButton, FontWeights, getTheme, ICommandBarItemProps, mergeStyleSets, Modal, PrimaryButton, Dialog, DialogFooter, DialogType } from "@fluentui/react";
+import { IconButton } from "@fluentui/react";
 import { loadWebResource } from "../domain/WebResourceLoader";
 import { getExternalScript } from "../domain/ScriptCaller";
 import { EditorWrapper } from "./EditorWrapper";
@@ -62,6 +62,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const [defaultDesign, setDefaultDesign] = React.useState(_defaultDesign);
 
   const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false, lastOrigin: 'internal' } as DesignState);
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
 
   // Init once
   React.useEffect(() => { init(); }, []);
@@ -212,8 +213,16 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     });
   }
 
+  const onMaximize = () => {
+    const newFullScreenSetting = !isFullScreen;
+
+    setIsFullScreen(newFullScreenSetting);
+    props.pcfContext.mode.setFullScreen(newFullScreenSetting);
+  };
+
   return (
-    <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: "100%" }}>
+    <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", minWidth: "1024px", minHeight: "500px", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: `${props.allocatedWidth > 0 ? props.pcfContext.mode.allocatedWidth : 1024}px` }}>
+      <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} />
       { editorProps &&
         <EditorWrapper editorProps={editorProps} refCallBack={refCallBack}  />
       }
