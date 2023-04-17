@@ -1,5 +1,7 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import { App, AppProps } from "../components/App";
+import { AppProps } from "../components/App";
+import { AppEntry } from "../components/AppEntry";
+
 import * as React from "react";
 
 export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInputs, IOutputs> {
@@ -30,6 +32,8 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
 
         this.jsonInput = context.parameters.jsonInputField.raw ?? "";
         this.htmlOutput = context.parameters.htmlOutputField.raw ?? "";
+
+        context.mode.trackContainerResize(true);
     }
 
     private updateOutputs = (jsonInput: string, htmlOutput: string) => {
@@ -48,11 +52,13 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
         const props: AppProps = { 
             pcfContext: context,
             jsonInput: context.parameters.jsonInputField.raw,
-            updateOutputs: this.updateOutputs
+            updateOutputs: this.updateOutputs,
+            allocatedHeight: context.mode.allocatedHeight,
+            allocatedWidth: context.mode.allocatedWidth
         };
 
         return React.createElement(
-            App, props
+            AppEntry, props
         );
     }
 

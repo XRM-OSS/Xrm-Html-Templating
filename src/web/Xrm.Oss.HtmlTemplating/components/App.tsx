@@ -9,11 +9,15 @@ import { CommandBar, DefaultButton, FontWeights, getTheme, ICommandBarItemProps,
 import { loadWebResource } from "../domain/WebResourceLoader";
 import { getExternalScript } from "../domain/ScriptCaller";
 import { EditorWrapper } from "./EditorWrapper";
+import { DesignState, DesignStateActionEnum, designStateReducer } from "../domain/DesignState";
+import { debounce, localHost } from "../domain/Utils";
 
 export interface AppProps {
   pcfContext: ComponentFramework.Context<IInputs>;
   jsonInput: string | null;
   updateOutputs: (jsonInput: string, htmlOutput: string) => void;
+  allocatedHeight: number;
+  allocatedWidth: number;
 }
 
 const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_armor/gm;
@@ -56,7 +60,8 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const [editorReady, setEditorReady] = React.useState(false);
   const [editorProps, setEditorProps] = React.useState<EmailEditorProps>();
   const [defaultDesign, setDefaultDesign] = React.useState(_defaultDesign);
-  const [lockDesignImport, setLockDesignImport] = React.useState(false);
+
+  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false, lastOrigin: 'internal' } as DesignState);
 
   // Init once
   React.useEffect(() => { init(); }, []);
@@ -67,15 +72,21 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       return;
     }
 
-    if (!lockDesignImport) {
-      loadDesign();
-    }
-    else {
-      setLockDesignImport(false);
-    }
+    dispatchDesign({
+      origin: 'external',
+      payload: {
+        json: props.jsonInput ?? "",
+        html: ""
+      },
+      type: DesignStateActionEnum.SET
+    });
   }, [ props.jsonInput, editorReady ]);
 
   const retrieveMergeTags = (): Promise<Array<MergeTag>> => {
+    if (window.location.hostname === localHost) {
+      return Promise.resolve([]);
+    }
+
     return WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_uniquename,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true })
       .then(({ value: snippets }: { value: Array<XtlSnippet> }) => {
         const resolveTags = (children?: Array<XtlSnippet>): MergeTag[] => {
@@ -107,16 +118,23 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       });
   };
 
-  const onUpdate = React.useCallback(async () => {
-    setLockDesignImport(true);
+  const onEditorUpdate = React.useCallback(async () => {
     const [designOutput, htmlOutput] = await getEditorContent();
 
-    props.updateOutputs(designOutput, htmlOutput);
+    dispatchDesign({
+      origin: 'internal',
+      payload: {
+        json: designOutput,
+        html: htmlOutput
+      },
+      type: DesignStateActionEnum.SET
+    });
   }, []);
 
   const initEditor = React.useCallback(() => {
     setEditorReady(true);
-    editorRef.current!.addEventListener("design:updated", onUpdate);
+    editorRef.current!.addEventListener("design:updated", onEditorUpdate);
+    editorRef.current!.addEventListener("design:loaded", onEditorUpdate);
   }, []);
 
   const refCallBack = (editor: EditorRef) => {
@@ -126,7 +144,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const init = async () => {
     const customScriptPath = props.pcfContext.parameters.customScriptPath.raw;
 
-    if (customScriptPath) {
+    if (customScriptPath && window.location.hostname !== localHost) {
       try {
         await loadWebResource(customScriptPath);
       }
@@ -147,7 +165,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     let propertiesToSet = properties;
     let defaultDesign = _defaultDesign;
 
-    if (props.pcfContext.parameters.customScriptPath.raw && props.pcfContext.parameters.customScriptInitFunc.raw) {
+    if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptPath.raw && props.pcfContext.parameters.customScriptInitFunc.raw) {
       const funcRef = getExternalScript(props.pcfContext.parameters.customScriptInitFunc.raw);
       const funcResult = await funcRef({ editorProps: properties, webApiClient: WebApiClient });
 
@@ -166,12 +184,22 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     setDefaultDesign(defaultDesign);
   };
 
-  const loadDesign = () => {
-    setLockDesignImport(true);
+  const unlockEditor = debounce(() => {
+    dispatchDesign({
+      type: DesignStateActionEnum.UNLOCK
+    });
+  }, 500);
 
-    const design = props.jsonInput;
-    editorRef.current!.loadDesign((design && JSON.parse(design)) || defaultDesign);
-  }
+  React.useEffect(() => {
+    if (designContext.lastOrigin !== 'internal') {
+      const design = designContext.design;
+      editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || defaultDesign);
+    }
+    else {
+      unlockEditor();
+      props.updateOutputs(designContext.design.json, designContext.design.html);
+    }
+  }, [ designContext.design ]);
 
   const getEditorContent = (): Promise<[string, string]> => {
     return new Promise((resolve, reject) => {
@@ -185,7 +213,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", position: "relative", height: "100%", width: "100%" }}>
+    <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: "100%" }}>
       { editorProps &&
         <EditorWrapper editorProps={editorProps} refCallBack={refCallBack}  />
       }
