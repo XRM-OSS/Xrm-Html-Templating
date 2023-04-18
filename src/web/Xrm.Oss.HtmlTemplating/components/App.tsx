@@ -61,7 +61,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const [editorProps, setEditorProps] = React.useState<EmailEditorProps>();
   const [defaultDesign, setDefaultDesign] = React.useState(_defaultDesign);
 
-  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false, lastOrigin: 'internal' } as DesignState);
+  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false } as DesignState);
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
   // Init once
@@ -135,7 +135,6 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const initEditor = React.useCallback(() => {
     setEditorReady(true);
     editorRef.current!.addEventListener("design:updated", onEditorUpdate);
-    editorRef.current!.addEventListener("design:loaded", onEditorUpdate);
   }, []);
 
   const refCallBack = (editor: EditorRef) => {
@@ -191,16 +190,26 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     });
   }, 500);
 
-  React.useEffect(() => {
-    if (designContext.lastOrigin !== 'internal') {
+  const handleDesignChange = async () => {
+    if (!designContext.lastOrigin) {
+      return;
+    }
+
+    if (designContext.lastOrigin === 'external') {
       const design = designContext.design;
       editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || defaultDesign);
     }
-    else {
+
+    const [json, html] = await getEditorContent();
+
+    if (designContext.lastOrigin === 'internal') {
       unlockEditor();
-      props.updateOutputs(designContext.design.json, designContext.design.html);
     }
-  }, [ designContext.design ]);
+
+    props.updateOutputs(json, html);
+  };
+
+  React.useEffect(() => { handleDesignChange(); }, [ designContext.design ]);
 
   const getEditorContent = (): Promise<[string, string]> => {
     return new Promise((resolve, reject) => {

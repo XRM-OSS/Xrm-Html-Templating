@@ -19,7 +19,7 @@ export interface DesignDefinition {
 export interface DesignState {
     design: DesignDefinition;
     isLocked: boolean;
-    lastOrigin: Origin 
+    lastOrigin?: Origin 
 }
 
 export function designStateReducer(designState: DesignState, action: DesignStateAction) {
