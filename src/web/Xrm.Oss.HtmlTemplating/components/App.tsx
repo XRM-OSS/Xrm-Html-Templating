@@ -55,6 +55,8 @@ const reviveXtlExpressionJson = (object: { [key: string]: any }) => {
   }, {} as { [key: string]: any });
 };
 
+let editorReadyFired = false;
+
 export const App: React.FC<AppProps> = React.memo((props) => {
   const editorRef = React.useRef<EditorRef>();
   const [editorReady, setEditorReady] = React.useState(false);
@@ -132,10 +134,29 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     });
   }, []);
 
-  const initEditor = React.useCallback(() => {
-    setEditorReady(true);
-    editorRef.current!.addEventListener("design:updated", onEditorUpdate);
-  }, []);
+  const onEditorReady = async () => {
+    // Run only once. MS wires up a middleware in UCI "windowEventListenerBootTask", which interfers with unlayer and makes it post the ready event on every change...
+    if (!editorReadyFired) {
+      editorReadyFired = true;
+      setEditorReady(true);
+
+      // "Unregister" onEditorReady event, MS event middleware causes it to execute more often than necessary
+      setEditorProps({ ...editorProps, onReady: undefined });
+
+      editorRef.current!.addEventListener("design:updated", onEditorUpdate);
+
+      if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptOnReadyFunc.raw) {
+        try {
+          const funcRef = getExternalScript(props.pcfContext.parameters.customScriptOnReadyFunc.raw);
+          
+          await funcRef({ editorRef: editorRef.current, webApiClient: WebApiClient });
+        }
+        catch(ex: any) {
+          alert(`Error in your custom onReady func. Error message: ${ex.message || ex}`);
+        }
+      }
+    }
+  };
 
   const refCallBack = (editor: EditorRef) => {
     editorRef.current = editor;
@@ -165,20 +186,25 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     let propertiesToSet = properties;
     let defaultDesign = _defaultDesign;
 
-    if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptPath.raw && props.pcfContext.parameters.customScriptInitFunc.raw) {
-      const funcRef = getExternalScript(props.pcfContext.parameters.customScriptInitFunc.raw);
-      const funcResult = await funcRef({ editorProps: properties, webApiClient: WebApiClient });
+    if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptInitFunc.raw) {
+      try {
+        const funcRef = getExternalScript(props.pcfContext.parameters.customScriptInitFunc.raw);
+        const funcResult = await funcRef({ editorProps: properties, webApiClient: WebApiClient });
 
-      if (funcResult && funcResult.editorProps) {
-        propertiesToSet = funcResult.editorProps;
+        if (funcResult && funcResult.editorProps) {
+          propertiesToSet = funcResult.editorProps;
+        }
+
+        if (funcResult && funcResult.defaultDesign) {
+          defaultDesign = funcResult.defaultDesign;
+        }
       }
-
-      if (funcResult && funcResult.defaultDesign) {
-        defaultDesign = funcResult.defaultDesign;
+      catch (ex: any) {
+        alert(`Error in your custom init func, reverting to default values. Error message: ${ex.message || ex}`);
       }
     }
 
-    propertiesToSet.onReady = initEditor;
+    propertiesToSet.onReady = onEditorReady;
 
     setEditorProps(propertiesToSet);
     setDefaultDesign(defaultDesign);
