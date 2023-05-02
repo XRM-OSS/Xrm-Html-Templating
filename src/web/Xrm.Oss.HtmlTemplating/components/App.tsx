@@ -18,6 +18,7 @@ export interface AppProps {
   updateOutputs: (jsonInput: string, htmlOutput: string) => void;
   allocatedHeight: number;
   allocatedWidth: number;
+  updatedProperties: string[];
 }
 
 const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_armor/gm;
@@ -66,8 +67,8 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false } as DesignState);
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
-  // Init once
-  React.useEffect(() => { init(); }, []);
+  // Init once initially and every time fullscreen activates / deactivates
+  React.useEffect(() => { init(); }, [ isFullScreen ]);
 
   // Load design on external update
   React.useEffect(() => {
@@ -83,7 +84,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       },
       type: DesignStateActionEnum.SET
     });
-  }, [ props.jsonInput, editorReady ]);
+  }, [ props.jsonInput, editorReady, isFullScreen ]);
 
   const retrieveMergeTags = (): Promise<Array<MergeTag>> => {
     if (window.location.hostname === localHost) {
@@ -237,6 +238,17 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
   React.useEffect(() => { handleDesignChange(); }, [ designContext.design ]);
 
+  React.useEffect(() => {
+    if (props.updatedProperties && props.updatedProperties.includes("fullscreen_open")) {
+      editorReadyFired = false;
+      setIsFullScreen(true);
+    }
+    else if (props.updatedProperties && props.updatedProperties.includes("fullscreen_close")) {
+      editorReadyFired = false;
+      setIsFullScreen(false);
+    }
+  }, [props.updatedProperties]);
+
   const getEditorContent = (): Promise<[string, string]> => {
     return new Promise((resolve, reject) => {
       editorRef.current!.exportHtml(({ design, html }: { design: { [key: string]: any }, html: string }) => {
@@ -249,15 +261,12 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   }
 
   const onMaximize = () => {
-    const newFullScreenSetting = !isFullScreen;
-
-    setIsFullScreen(newFullScreenSetting);
-    props.pcfContext.mode.setFullScreen(newFullScreenSetting);
+    props.pcfContext.mode.setFullScreen(true);
   };
 
   return (
     <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", minWidth: "1024px", minHeight: "500px", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: `${props.allocatedWidth > 0 ? props.pcfContext.mode.allocatedWidth : 1024}px` }}>
-      <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} />
+      { !isFullScreen && <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} /> }
       { editorProps &&
         <EditorWrapper editorProps={editorProps} refCallBack={refCallBack}  />
       }

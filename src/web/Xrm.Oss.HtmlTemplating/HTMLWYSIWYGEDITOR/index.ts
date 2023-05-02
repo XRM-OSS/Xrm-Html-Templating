@@ -54,7 +54,8 @@ export class HTMLWYSIWYGEDITOR implements ComponentFramework.ReactControl<IInput
             jsonInput: context.parameters.jsonInputField.raw,
             updateOutputs: this.updateOutputs,
             allocatedHeight: context.mode.allocatedHeight,
-            allocatedWidth: context.mode.allocatedWidth
+            allocatedWidth: context.mode.allocatedWidth,
+            updatedProperties: context.updatedProperties
         };
 
         return React.createElement(
