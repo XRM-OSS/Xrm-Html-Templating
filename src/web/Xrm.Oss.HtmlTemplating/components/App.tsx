@@ -11,6 +11,7 @@ import { getExternalScript } from "../domain/ScriptCaller";
 import { EditorWrapper } from "./EditorWrapper";
 import { DesignState, DesignStateActionEnum, designStateReducer } from "../domain/DesignState";
 import { debounce, localHost } from "../domain/Utils";
+import { registerFileUploader } from "../domain/FileUploader";
 
 export interface AppProps {
   pcfContext: ComponentFramework.Context<IInputs>;
@@ -19,6 +20,24 @@ export interface AppProps {
   allocatedHeight: number;
   allocatedWidth: number;
   updatedProperties: string[];
+}
+
+export interface ImageUploadSettings {
+  uploadEntity: string, // "msdyn_knowledgearticleimage"
+  uploadEntityFileNameField: string, // "msdyn_filename"
+  uploadEntityBodyField: string, // "msdyn_blobfile"
+  parentLookupName?: string | null
+}
+
+export interface FormContext {
+  entityId: string,
+  entity: string
+}
+
+export interface FunctionContext {
+  editorRef: EditorRef,
+  formContext: FormContext,
+  webApiClient: typeof WebApiClient
 }
 
 const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_armor/gm;
@@ -66,6 +85,11 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
   const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false } as DesignState);
   const [isFullScreen, setIsFullScreen] = React.useState(false);
+
+  const formContext: FormContext = {
+    entityId: (props.pcfContext.mode as any).contextInfo.entityId,
+    entity: (props.pcfContext.mode as any).contextInfo.entityTypeName
+  };
 
   // Init once initially and every time fullscreen activates / deactivates
   React.useEffect(() => { init(); }, [ isFullScreen ]);
@@ -141,20 +165,34 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       editorReadyFired = true;
       setEditorReady(true);
 
-      // "Unregister" onEditorReady event, MS event middleware causes it to execute more often than necessary
-      setEditorProps({ ...editorProps, onReady: undefined });
-
       editorRef.current!.addEventListener("design:updated", onEditorUpdate);
+
+      const functionContext: FunctionContext = {
+        editorRef: editorRef.current!,
+        formContext: formContext,
+        webApiClient: WebApiClient
+      };
 
       if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptOnReadyFunc.raw) {
         try {
           const funcRef = getExternalScript(props.pcfContext.parameters.customScriptOnReadyFunc.raw);
           
-          await funcRef({ editorRef: editorRef.current, webApiClient: WebApiClient });
+          await funcRef(functionContext);
         }
         catch(ex: any) {
           alert(`Error in your custom onReady func. Error message: ${ex.message || ex}`);
         }
+      }
+
+      if (props.pcfContext.parameters.imageUploadEntity.raw && props.pcfContext.parameters.imageUploadEntityFileNameField.raw && props.pcfContext.parameters.imageUploadEntityBodyField.raw) {
+        const imageUploadSettings: ImageUploadSettings = {
+          uploadEntity: props.pcfContext.parameters.imageUploadEntity.raw,
+          uploadEntityFileNameField: props.pcfContext.parameters.imageUploadEntityFileNameField.raw,
+          uploadEntityBodyField: props.pcfContext.parameters.imageUploadEntityBodyField.raw,
+          parentLookupName: props.pcfContext.parameters.imageUploadEntityParentLookupName.raw
+        };
+
+        registerFileUploader(imageUploadSettings, functionContext);
       }
     }
   };
@@ -186,11 +224,13 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
     let propertiesToSet = properties;
     let defaultDesign = _defaultDesign;
+    let appSettings = {};
 
     if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptInitFunc.raw) {
       try {
         const funcRef = getExternalScript(props.pcfContext.parameters.customScriptInitFunc.raw);
-        const funcResult = await funcRef({ editorProps: properties, webApiClient: WebApiClient });
+
+        const funcResult = await funcRef({ editorProps: properties, formContext: formContext, webApiClient: WebApiClient });
 
         if (funcResult && funcResult.editorProps) {
           propertiesToSet = funcResult.editorProps;
@@ -204,8 +244,6 @@ export const App: React.FC<AppProps> = React.memo((props) => {
         alert(`Error in your custom init func, reverting to default values. Error message: ${ex.message || ex}`);
       }
     }
-
-    propertiesToSet.onReady = onEditorReady;
 
     setEditorProps(propertiesToSet);
     setDefaultDesign(defaultDesign);
@@ -268,7 +306,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", minWidth: "1024px", minHeight: "500px", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: `${props.allocatedWidth > 0 ? props.pcfContext.mode.allocatedWidth : 1024}px` }}>
       { !isFullScreen && <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} /> }
       { editorProps &&
-        <EditorWrapper editorProps={editorProps} refCallBack={refCallBack}  />
+        <EditorWrapper editorProps={{...editorProps, onReady: onEditorReady}} refCallBack={refCallBack}  />
       }
     </div>
   );

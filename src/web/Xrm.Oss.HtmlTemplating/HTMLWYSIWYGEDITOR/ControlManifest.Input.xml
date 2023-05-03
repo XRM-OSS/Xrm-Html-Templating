@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="oss" constructor="HTMLWYSIWYGEDITOR" version="0.0.46" display-name-key="HTMLWYSIWYGEDITOR" description-key="HTMLWYSIWYGEDITOR description" control-type="virtual" >
+  <control namespace="oss" constructor="HTMLWYSIWYGEDITOR" version="0.0.57" display-name-key="HTMLWYSIWYGEDITOR" description-key="HTMLWYSIWYGEDITOR description" control-type="virtual" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -34,6 +34,10 @@
     <property name="customScriptOnReadyFunc" display-name-key="Custom Script OnReady Func" description-key="Namespace of the custom onReady func for the unlayer editor" of-type-group="text" usage="input" />
     <property name="projectId" display-name-key="Project Id" description-key="Your unlayer editor project Id" of-type="Whole.None" usage="input" />
     <property name="displayMode" display-name-key="Display Mode" description-key="Which display mode to initialize in Unlayer editor. Email or Web, defaults to web" of-type-group="text" usage="input" />
+    <property name="imageUploadEntity" display-name-key="Image Upload Entity" description-key="Logical Name of entity where images should be stored" of-type-group="text" usage="input" />
+    <property name="imageUploadEntityFileNameField" display-name-key="Image Upload Entity File Name Field" description-key="Logical Name of field where file name should be stored as record name" of-type-group="text" usage="input" />
+    <property name="imageUploadEntityBodyField" display-name-key="Image Upload Entity Body Field" description-key="Logical Name of field where file content should be stored. Can be of type file or image." of-type-group="text" usage="input" />
+    <property name="imageUploadEntityParentLookupName" display-name-key="Image Upload Entity Parent Lookup Name" description-key="SCHEMA NAME of field in the image upload entity which points to the current templating record" of-type-group="text" usage="input" />
     <!--
       Property node's of-type attribute can be of-type-group attribute.
       Example:
