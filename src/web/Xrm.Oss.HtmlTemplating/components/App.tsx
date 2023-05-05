@@ -36,7 +36,7 @@ export interface FormContext {
 
 export interface FunctionContext {
   editorRef: EditorRef,
-  formContext: FormContext,
+  getFormContext: () => FormContext,
   webApiClient: typeof WebApiClient
 }
 
@@ -86,10 +86,10 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false } as DesignState);
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
-  const formContext: FormContext = {
+  const getFormContext: () => FormContext = () => ({
     entityId: (props.pcfContext.mode as any).contextInfo.entityId,
     entity: (props.pcfContext.mode as any).contextInfo.entityTypeName
-  };
+  });
 
   // Init once initially and every time fullscreen activates / deactivates
   React.useEffect(() => { init(); }, [ isFullScreen ]);
@@ -169,7 +169,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
       const functionContext: FunctionContext = {
         editorRef: editorRef.current!,
-        formContext: formContext,
+        getFormContext: getFormContext,
         webApiClient: WebApiClient
       };
 
@@ -230,7 +230,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       try {
         const funcRef = getExternalScript(props.pcfContext.parameters.customScriptInitFunc.raw);
 
-        const funcResult = await funcRef({ editorProps: properties, formContext: formContext, webApiClient: WebApiClient });
+        const funcResult = await funcRef({ editorProps: properties, getFormContext: getFormContext, webApiClient: WebApiClient });
 
         if (funcResult && funcResult.editorProps) {
           propertiesToSet = funcResult.editorProps;

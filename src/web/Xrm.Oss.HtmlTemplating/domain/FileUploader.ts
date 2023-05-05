@@ -4,7 +4,7 @@ import { FormContext, FunctionContext, ImageUploadSettings } from "../components
 
 
 // https://learn.microsoft.com/en-us/power-apps/developer/data-platform/file-column-data?tabs=webapi#upload-files
-export const registerFileUploader = ({uploadEntity, uploadEntityFileNameField, uploadEntityBodyField, parentLookupName}: ImageUploadSettings, { editorRef, formContext, webApiClient }: FunctionContext) => {
+export const registerFileUploader = ({uploadEntity, uploadEntityFileNameField, uploadEntityBodyField, parentLookupName}: ImageUploadSettings, { editorRef, getFormContext, webApiClient }: FunctionContext) => {
     editorRef.registerCallback('image', async function (file, done) {
         var img = file.attachments[0];
 
@@ -15,8 +15,16 @@ export const registerFileUploader = ({uploadEntity, uploadEntityFileNameField, u
             }
         };
 
-        if (parentLookupName && formContext?.entity && formContext?.entityId) {
-            (fileRequest as any).entity[`${parentLookupName}@odata.bind`] = `${webApiClient.GetSetName(formContext.entity)}(${formContext.entityId})`;
+        const formContext = getFormContext();
+
+        if (parentLookupName) {
+            if (formContext?.entity && formContext?.entityId) {
+                (fileRequest as any).entity[`${parentLookupName}@odata.bind`] = `${webApiClient.GetSetName(formContext.entity)}(${formContext.entityId})`;
+            }
+            else {
+                (window as any).Xrm.Navigation.openAlertDialog("Your record is not yet created. Please save to be able to upload images");
+                throw new Error("Image upload not possible, record has to be saved first");
+            }
         }
 
         try {
