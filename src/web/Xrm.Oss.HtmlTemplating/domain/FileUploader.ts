@@ -1,6 +1,5 @@
 import * as WebApiClient from "xrm-webapi-client";
-import { EditorRef } from "react-email-editor";
-import { FormContext, FunctionContext, ImageUploadSettings } from "../components/App";
+import { FunctionContext, ImageUploadSettings } from "../components/App";
 
 
 // https://learn.microsoft.com/en-us/power-apps/developer/data-platform/file-column-data?tabs=webapi#upload-files
@@ -10,12 +9,14 @@ export const registerFileUploader = ({uploadEntity, uploadEntityFileNameField, u
 
         var fileRequest: WebApiClient.CreateParameters = {
             entityName: uploadEntity,
-            entity: {
-                [uploadEntityFileNameField]: img.name
-            }
+            entity: { }
         };
 
         const formContext = getFormContext();
+
+        if (uploadEntityFileNameField) {
+            (fileRequest as any).entity[uploadEntityFileNameField] = img.name;
+        }
 
         if (parentLookupName) {
             if (formContext?.entity && formContext?.entityId) {

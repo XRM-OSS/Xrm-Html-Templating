@@ -24,7 +24,7 @@ export interface AppProps {
 
 export interface ImageUploadSettings {
   uploadEntity: string, // "msdyn_knowledgearticleimage"
-  uploadEntityFileNameField: string, // "msdyn_filename"
+  uploadEntityFileNameField?: string | null, // "msdyn_filename"
   uploadEntityBodyField: string, // "msdyn_blobfile"
   parentLookupName?: string | null
 }
@@ -184,7 +184,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
         }
       }
 
-      if (props.pcfContext.parameters.imageUploadEntity.raw && props.pcfContext.parameters.imageUploadEntityFileNameField.raw && props.pcfContext.parameters.imageUploadEntityBodyField.raw) {
+      if (props.pcfContext.parameters.imageUploadEntity.raw && props.pcfContext.parameters.imageUploadEntityBodyField.raw) {
         const imageUploadSettings: ImageUploadSettings = {
           uploadEntity: props.pcfContext.parameters.imageUploadEntity.raw,
           uploadEntityFileNameField: props.pcfContext.parameters.imageUploadEntityFileNameField.raw,
