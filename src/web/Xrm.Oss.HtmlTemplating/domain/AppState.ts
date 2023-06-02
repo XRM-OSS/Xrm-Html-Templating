@@ -54,6 +54,10 @@ export function appStateReducer(designState: AppState, action: SetEditorReadyAct
                 editorProps: payload.props
             } as AppState;
         case "SET_EDITOR_READY":
+            if (designState.editorReady === payload.editorReady) {
+                return designState;
+            }
+
             return {
                 ...designState,
                 editorReady: payload.editorReady
