@@ -305,7 +305,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   return (
     <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", minWidth: "1024px", minHeight: "500px", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: `${props.allocatedWidth > 0 ? props.pcfContext.mode.allocatedWidth : 1024}px` }}>
       { !isFullScreen && <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} /> }
-      { editorProps &&
+      { editorProps && defaultDesign &&
         <EditorWrapper editorProps={{...editorProps, onReady: onEditorReady}} refCallBack={refCallBack}  />
       }
     </div>
