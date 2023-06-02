@@ -9,9 +9,10 @@ import { IconButton } from "@fluentui/react";
 import { loadWebResource } from "../domain/WebResourceLoader";
 import { getExternalScript } from "../domain/ScriptCaller";
 import { EditorWrapper } from "./EditorWrapper";
-import { DesignState, DesignStateActionEnum, designStateReducer } from "../domain/DesignState";
+import { DesignState, DesignStateAction, DesignStateActionEnum, designStateReducer } from "../domain/DesignState";
 import { debounce, localHost } from "../domain/Utils";
 import { registerFileUploader } from "../domain/FileUploader";
+import { AppState, SetDefaultDesign, SetEditorProps, SetEditorReady, SetIsFullScreen, appStateReducer } from "../domain/AppState";
 
 export interface AppProps {
   pcfContext: ComponentFramework.Context<IInputs>;
@@ -75,16 +76,11 @@ const reviveXtlExpressionJson = (object: { [key: string]: any }) => {
   }, {} as { [key: string]: any });
 };
 
-let editorReadyFired = false;
-
 export const App: React.FC<AppProps> = React.memo((props) => {
   const editorRef = React.useRef<EditorRef>();
-  const [editorReady, setEditorReady] = React.useState(false);
-  const [editorProps, setEditorProps] = React.useState<EmailEditorProps>();
-  const [defaultDesign, setDefaultDesign] = React.useState(_defaultDesign);
 
-  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: "", html: "" }, isLocked: false } as DesignState);
-  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: props.jsonInput ?? ""} } as DesignState);
+  const [appState, dispatchAppState] = React.useReducer(appStateReducer, { defaultDesign: undefined, editorProps: undefined, editorReady: false, isFullScreen: false } as AppState)
 
   const getFormContext: () => FormContext = () => ({
     entityId: (props.pcfContext.mode as any).contextInfo.entityId,
@@ -92,23 +88,25 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   });
 
   // Init once initially and every time fullscreen activates / deactivates
-  React.useEffect(() => { init(); }, [ isFullScreen ]);
+  React.useEffect(() => { init(); }, [ appState.isFullScreen ]);
 
-  // Load design on external update
   React.useEffect(() => {
-    if (!editorReady) {
-      return;
+    if (appState.editorReady) {
+      editorBootstrap();
+      dispatchDesign({
+        origin: 'external',
+        payload: {
+          json: designContext?.design?.json,
+          html: ""
+        },
+        type: DesignStateActionEnum.SET
+      });
     }
+  }, [ appState.editorReady ]);
 
-    dispatchDesign({
-      origin: 'external',
-      payload: {
-        json: props.jsonInput ?? "",
-        html: ""
-      },
-      type: DesignStateActionEnum.SET
-    });
-  }, [ props.jsonInput, editorReady, isFullScreen ]);
+  const delayedDesignDispatch = debounce((design: DesignStateAction) => {
+    dispatchDesign(design);
+  }, 1000);
 
   const retrieveMergeTags = (): Promise<Array<MergeTag>> => {
     if (window.location.hostname === localHost) {
@@ -149,7 +147,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const onEditorUpdate = React.useCallback(async () => {
     const [designOutput, htmlOutput] = await getEditorContent();
 
-    dispatchDesign({
+    delayedDesignDispatch({
       origin: 'internal',
       payload: {
         json: designOutput,
@@ -159,41 +157,41 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     });
   }, []);
 
-  const onEditorReady = async () => {
-    // Run only once. MS wires up a middleware in UCI "windowEventListenerBootTask", which interfers with unlayer and makes it post the ready event on every change...
-    if (!editorReadyFired) {
-      editorReadyFired = true;
-      setEditorReady(true);
+  const onEditorReady = () => {
+    dispatchAppState(SetEditorReady(true));
+  };
 
-      editorRef.current!.addEventListener("design:updated", onEditorUpdate);
+  const editorBootstrap = async () => {
+    console.log("[WYSIWYG_PCF] Bootstrapping unlayer editor");
 
-      const functionContext: FunctionContext = {
-        editorRef: editorRef.current!,
-        getFormContext: getFormContext,
-        webApiClient: WebApiClient
+    editorRef.current!.addEventListener("design:updated", onEditorUpdate);
+
+    const functionContext: FunctionContext = {
+      editorRef: editorRef.current!,
+      getFormContext: getFormContext,
+      webApiClient: WebApiClient
+    };
+
+    if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptOnReadyFunc.raw) {
+      try {
+        const funcRef = getExternalScript(props.pcfContext.parameters.customScriptOnReadyFunc.raw);
+
+        await funcRef(functionContext);
+      }
+      catch (ex: any) {
+        alert(`Error in your custom onReady func. Error message: ${ex.message || ex}`);
+      }
+    }
+
+    if (props.pcfContext.parameters.imageUploadEntity.raw && props.pcfContext.parameters.imageUploadEntityBodyField.raw) {
+      const imageUploadSettings: ImageUploadSettings = {
+        uploadEntity: props.pcfContext.parameters.imageUploadEntity.raw,
+        uploadEntityFileNameField: props.pcfContext.parameters.imageUploadEntityFileNameField.raw,
+        uploadEntityBodyField: props.pcfContext.parameters.imageUploadEntityBodyField.raw,
+        parentLookupName: props.pcfContext.parameters.imageUploadEntityParentLookupName.raw
       };
 
-      if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptOnReadyFunc.raw) {
-        try {
-          const funcRef = getExternalScript(props.pcfContext.parameters.customScriptOnReadyFunc.raw);
-          
-          await funcRef(functionContext);
-        }
-        catch(ex: any) {
-          alert(`Error in your custom onReady func. Error message: ${ex.message || ex}`);
-        }
-      }
-
-      if (props.pcfContext.parameters.imageUploadEntity.raw && props.pcfContext.parameters.imageUploadEntityBodyField.raw) {
-        const imageUploadSettings: ImageUploadSettings = {
-          uploadEntity: props.pcfContext.parameters.imageUploadEntity.raw,
-          uploadEntityFileNameField: props.pcfContext.parameters.imageUploadEntityFileNameField.raw,
-          uploadEntityBodyField: props.pcfContext.parameters.imageUploadEntityBodyField.raw,
-          parentLookupName: props.pcfContext.parameters.imageUploadEntityParentLookupName.raw
-        };
-
-        registerFileUploader(imageUploadSettings, functionContext);
-      }
+      registerFileUploader(imageUploadSettings, functionContext);
     }
   };
 
@@ -224,7 +222,6 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
     let propertiesToSet = properties;
     let defaultDesign = _defaultDesign;
-    let appSettings = {};
 
     if (window.location.hostname !== localHost && props.pcfContext.parameters.customScriptInitFunc.raw) {
       try {
@@ -245,15 +242,22 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       }
     }
 
-    setEditorProps(propertiesToSet);
-    setDefaultDesign(defaultDesign);
+    dispatchAppState(SetEditorProps(propertiesToSet));
+    dispatchAppState(SetDefaultDesign(defaultDesign));
   };
 
-  const unlockEditor = debounce(() => {
-    dispatchDesign({
-      type: DesignStateActionEnum.UNLOCK
-    });
-  }, 500);
+  const processExternalUpdate = () => {
+    if (props.jsonInput !== designContext.design.json) {
+      delayedDesignDispatch({
+        origin: 'external',
+        payload: {
+          json: props.jsonInput ?? "",
+          html: ""
+        },
+        type: DesignStateActionEnum.SET
+      });
+    }
+  };
 
   const handleDesignChange = async () => {
     if (!designContext.lastOrigin) {
@@ -262,15 +266,10 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
     if (designContext.lastOrigin === 'external') {
       const design = designContext.design;
-      editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || defaultDesign);
+      editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || appState.defaultDesign);
     }
 
     const [json, html] = await getEditorContent();
-
-    if (designContext.lastOrigin === 'internal') {
-      unlockEditor();
-    }
-
     props.updateOutputs(json, html);
   };
 
@@ -278,12 +277,15 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
   React.useEffect(() => {
     if (props.updatedProperties && props.updatedProperties.includes("fullscreen_open")) {
-      editorReadyFired = false;
-      setIsFullScreen(true);
+      dispatchAppState(SetIsFullScreen(true));
     }
     else if (props.updatedProperties && props.updatedProperties.includes("fullscreen_close")) {
-      editorReadyFired = false;
-      setIsFullScreen(false);
+      dispatchAppState(SetIsFullScreen(false));
+    }
+    else if (props.updatedProperties && props.updatedProperties.includes("jsonInputField")) {
+      if (appState.editorReady) {
+        processExternalUpdate();
+      }
     }
   }, [props.updatedProperties]);
 
@@ -298,15 +300,15 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     });
   }
 
-  const onMaximize = () => {
+  const onMaximize = debounce(() => {
     props.pcfContext.mode.setFullScreen(true);
-  };
+  }, 1000);
 
   return (
     <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", minWidth: "1024px", minHeight: "500px", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: `${props.allocatedWidth > 0 ? props.pcfContext.mode.allocatedWidth : 1024}px` }}>
-      { !isFullScreen && <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} /> }
-      { editorProps && defaultDesign &&
-        <EditorWrapper editorProps={{...editorProps, onReady: onEditorReady}} refCallBack={refCallBack}  />
+      { !appState.isFullScreen && <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} /> }
+      { appState.editorProps && appState.defaultDesign &&
+        <EditorWrapper editorProps={{...appState.editorProps, onReady: onEditorReady}} refCallBack={refCallBack}  />
       }
     </div>
   );

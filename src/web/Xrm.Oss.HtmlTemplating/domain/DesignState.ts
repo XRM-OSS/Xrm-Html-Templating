@@ -1,6 +1,5 @@
 export enum DesignStateActionEnum {
-    SET = 'SET',
-    UNLOCK = 'UNLOCK'
+    SET = 'SET'
 }
 
 export type Origin = 'internal' | 'external';
@@ -18,7 +17,6 @@ export interface DesignDefinition {
 
 export interface DesignState {
     design: DesignDefinition;
-    isLocked: boolean;
     lastOrigin?: Origin 
 }
 
@@ -27,20 +25,12 @@ export function designStateReducer(designState: DesignState, action: DesignState
 
     switch (type) {
         case DesignStateActionEnum.SET:
-            if (designState.isLocked && origin !== 'internal') {
-                return designState;
-            }
+            console.log(`[WYSIWYG_PCF] Editor received event from ${origin}`);
 
             return {
                 ...designState,
                 design: payload,
-                lastOrigin: origin,
-                isLocked: origin === 'internal'
-            } as DesignState;
-        case DesignStateActionEnum.UNLOCK:
-            return {
-                ...designState,
-                isLocked: false
+                lastOrigin: origin
             } as DesignState;
         default:
             return designState;

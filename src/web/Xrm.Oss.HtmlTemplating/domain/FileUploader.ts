@@ -44,8 +44,8 @@ export const registerFileUploader = ({uploadEntity, uploadEntityFileNameField, u
             await webApiClient.SendRequest("PATCH", url, img, { headers: headers, apiVersion: "9.2" });
             done({ progress: 100, url: `${url}/$value` });
         }
-        catch (error) {
-            console.log(error);
+        catch (error: any) {
+            console.log(`[WYSIWYG_PCF] Encountered error: ${error?.message ?? error}`);
             throw error;
         }
     });
