@@ -264,7 +264,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       return;
     }
 
-    if (designContext.lastOrigin === 'external') {
+    if (designContext.lastOrigin === 'external' && appState.editorReady) {
       const design = designContext.design;
       editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || appState.defaultDesign);
     }
@@ -283,9 +283,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       dispatchAppState(SetIsFullScreen(false));
     }
     else if (props.updatedProperties && props.updatedProperties.includes("jsonInputField")) {
-      if (appState.editorReady) {
-        processExternalUpdate();
-      }
+      processExternalUpdate();
     }
   }, [props.updatedProperties]);
 
