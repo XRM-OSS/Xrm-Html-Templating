@@ -79,7 +79,7 @@ const reviveXtlExpressionJson = (object: { [key: string]: any }) => {
 export const App: React.FC<AppProps> = React.memo((props) => {
   const editorRef = React.useRef<EditorRef>();
 
-  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: props.jsonInput ?? ""} } as DesignState);
+  const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: props.jsonInput ?? "" }, lastOrigin: 'external' } as DesignState);
   const [appState, dispatchAppState] = React.useReducer(appStateReducer, { defaultDesign: undefined, editorProps: undefined, editorReady: false, isFullScreen: false } as AppState)
 
   const getFormContext: () => FormContext = () => ({
@@ -96,7 +96,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       dispatchDesign({
         origin: 'external',
         payload: {
-          json: designContext?.design?.json,
+          json: props.jsonInput ?? "",
           html: ""
         },
         type: DesignStateActionEnum.SET
@@ -260,12 +260,14 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   };
 
   const handleDesignChange = async () => {
-    if (!designContext.lastOrigin) {
+    if (!appState.editorReady || !designContext.lastOrigin) {
       return;
     }
 
     if (designContext.lastOrigin === 'external' && appState.editorReady) {
       const design = designContext.design;
+      console.log(`[WYSIWYG_PCF]: ${new Date().toISOString()} - Loading external design: ${design?.json}`);
+
       editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || appState.defaultDesign);
     }
 
