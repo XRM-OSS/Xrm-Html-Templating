@@ -12,9 +12,8 @@
     "refreshTypes": "pcf-scripts refreshTypes"
   },
   "dependencies": {
-    "@fluentui/react": "^8.112.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@fluentui/react": "8.29.0",
+    "react-dom": "16.8.6",
     "react-email-editor": "^1.7.4",
     "xrm-webapi-client": "^4.1.6"
   },
