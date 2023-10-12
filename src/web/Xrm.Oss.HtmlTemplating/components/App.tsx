@@ -41,43 +41,10 @@ export interface FunctionContext {
   webApiClient: typeof WebApiClient
 }
 
-const asciiArmorRegex = /xtl_ascii_armor__(.*)?(?=__xtl_ascii_armor)__xtl_ascii_armor/gm;
 const _defaultDesign: any = { "counters": { "u_column": 1, "u_row": 1 }, "body": { "rows": [{ "cells": [1], "columns": [{ "contents": [], "values": { "_meta": { "htmlID": "u_column_1", "htmlClassNames": "u_column" } } }], "values": { "backgroundColor": "", "backgroundImage": { "url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false }, "padding": "10px", "columnsBackgroundColor": "", "_meta": { "htmlID": "u_row_1", "htmlClassNames": "u_row" }, "selectable": true, "draggable": true, "deletable": true } }], "values": { "backgroundColor": "#e7e7e7", "backgroundImage": { "url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false }, "contentWidth": "800px", "fontFamily": { "label": "Arial", "value": "arial,helvetica,sans-serif" }, "_meta": { "htmlID": "u_body", "htmlClassNames": "u_body" } } } };
 
-const reviveXtlExpressions = (expression: any) => {
-  if (!expression || typeof (expression) !== "string") {
-    return expression;
-  }
-
-  return expression.replace(asciiArmorRegex, (m, g) => {
-    return atob(g);
-  });
-};
-
-const reviveXtlExpressionJson = (object: { [key: string]: any }) => {
-  if (!object) {
-    return object;
-  }
-
-  const keys = Object.keys(object);
-
-  return keys.reduce((all, cur) => {
-    if (Array.isArray(object[cur])) {
-      all[cur] = (object[cur] as Array<any>).map(e => reviveXtlExpressionJson(e));
-    }
-    else if (typeof (object[cur]) === "object") {
-      all[cur] = reviveXtlExpressionJson(object[cur]);
-    }
-    else {
-      all[cur] = reviveXtlExpressions(object[cur]);
-    }
-
-    return all;
-  }, {} as { [key: string]: any });
-};
-
 export const App: React.FC<AppProps> = React.memo((props) => {
-  const editorRef = React.useRef<EditorRef>();
+  const editorRef = React.useRef<EditorRef>(null);
 
   const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: props.jsonInput ?? "" }, lastOrigin: 'external' } as DesignState);
   const [appState, dispatchAppState] = React.useReducer(appStateReducer, { defaultDesign: undefined, editorProps: undefined, editorReady: false, isFullScreen: false } as AppState)
@@ -110,7 +77,24 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
   const retrieveMergeTags = (): Promise<Array<MergeTag>> => {
     if (window.location.hostname === localHost) {
-      return Promise.resolve([]);
+      return Promise.resolve([
+        {
+          name: "Test 1",
+          mergeTags: [
+            {
+              name: "Test 1-1",
+              value: `\${{Snippet("salutation", { filter: '<filter><condition attribute="new_customlanguage" operator="eq" value="EN" /></filter>' })}}`,
+              sample: "Dear Frodo"
+            }
+          ],
+          sample: "Test 1 Example"
+        },
+        {
+          name: "Test 2",
+          value: `\${{RecordTable(Fetch("<fetch no-lock='true'><entity name='contact'><attribute name='ownerid' /><attribute name='createdon' /></entity></fetch>"), "contact", [{ name: "createdon", label: "Date", renderFunction: (record, column) => DateToString(ConvertDateTime(Value(column, { explicitTarget: record }), { userId: Value("ownerid", { explicitTarget: record }) }), { format: "yyyy-MM-dd hh:mm" }) }])}}`,
+          sample: "Test 2 Example"
+        }
+      ]);
     }
 
     return WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_uniquename,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true })
@@ -119,14 +103,13 @@ export const App: React.FC<AppProps> = React.memo((props) => {
           return (children ?? []).reduce((all, cur) => {
             const currentChildren: Array<XtlSnippet> = snippets.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
             const snippetValue: string = cur.oss_uniquename ? `\${{Snippet("${cur.oss_uniquename}")}}` : `\${{${cur.oss_xtlexpression}}}`;
-            const asciiArmor = `xtl_ascii_armor__${btoa(snippetValue)}__xtl_ascii_armor`;
 
             return [
               ...all,
               {
                 name: cur.oss_name,
                 mergeTags: currentChildren.length ? resolveTags(currentChildren) : undefined,
-                value: currentChildren.length ? undefined : asciiArmor,
+                value: currentChildren.length ? undefined : snippetValue,
                 sample: cur.oss_name
               } as MergeTag
             ];
@@ -193,10 +176,6 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
       registerFileUploader(imageUploadSettings, functionContext);
     }
-  };
-
-  const refCallBack = (editor: EditorRef) => {
-    editorRef.current = editor;
   };
 
   const init = async () => {
@@ -292,8 +271,8 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const getEditorContent = (): Promise<[string, string]> => {
     return new Promise((resolve, reject) => {
       editorRef.current!.exportHtml(({ design, html }: { design: { [key: string]: any }, html: string }) => {
-        const designOutput = JSON.stringify(reviveXtlExpressionJson(design));
-        const htmlOutput = reviveXtlExpressions(html);
+        const designOutput = JSON.stringify(design);
+        const htmlOutput = html;
 
         resolve([designOutput, htmlOutput]);
       });
@@ -308,7 +287,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     <div id='oss_htmlroot' style={{ display: "flex", flexDirection: "column", minWidth: "1024px", minHeight: "500px", position: "relative", height: `${props.allocatedHeight > 0 ? props.pcfContext.mode.allocatedHeight : 800}px`, width: `${props.allocatedWidth > 0 ? props.pcfContext.mode.allocatedWidth : 1024}px` }}>
       { !appState.isFullScreen && <IconButton iconProps={{ iconName: "MiniExpand" }} title="Maximize / Minimize" styles={{ root: { position: "absolute", backgroundColor: "#efefef", borderRadius: "5px", right: "10px", bottom: "10px" }}} onClick={onMaximize} /> }
       { appState.editorProps && appState.defaultDesign &&
-        <EditorWrapper editorProps={{...appState.editorProps, onReady: onEditorReady}} refCallBack={refCallBack}  />
+        <EditorWrapper editorProps={{...appState.editorProps, onReady: onEditorReady}} editorRef={editorRef}  />
       }
     </div>
   );

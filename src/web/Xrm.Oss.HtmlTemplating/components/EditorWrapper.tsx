@@ -4,13 +4,13 @@ import EmailEditor, { EditorRef, EmailEditorProps } from "react-email-editor";
 
 export interface EditorWrapperProps {
     editorProps: EmailEditorProps;
-    refCallBack: (editor: EditorRef) => void; 
+    editorRef: React.RefObject<EditorRef>;
 }
 
-export const EditorWrapper: React.FC<EditorWrapperProps> = React.memo(({ editorProps, refCallBack }) => {
+export const EditorWrapper: React.FC<EditorWrapperProps> = React.memo(({ editorProps, editorRef }) => {
     return (
         <EmailEditor
         { ...editorProps }
-        ref={refCallBack}
+        ref={editorRef}
     />)
 });
