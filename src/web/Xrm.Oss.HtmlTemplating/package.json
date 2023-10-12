@@ -12,9 +12,9 @@
     "refreshTypes": "pcf-scripts refreshTypes"
   },
   "dependencies": {
-    "@fluentui/react": "8.29.0",
-    "react": "16.8.6",
-    "react-dom": "16.8.6",
+    "@fluentui/react": "^8.112.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-email-editor": "^1.7.4",
     "xrm-webapi-client": "^4.1.6"
   },
@@ -31,7 +31,6 @@
     "eslint-plugin-react": "^7.31.8",
     "pcf-scripts": "^1",
     "pcf-start": "^1",
-    "react": "^16.8",
     "typescript": "^4.8.4"
   }
 }
