@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as WebApiClient from "xrm-webapi-client";
-import { EmailEditorProps, MergeTag, EditorRef } from "react-email-editor";
+import { EmailEditorProps, EditorRef, Editor } from "react-email-editor";
+import { MergeTags } from "state/types/types";
 import { HtmlTemplate } from "../domain/HtmlTemplate";
 import UserInputModal from "./UserInputModal";
 import { XtlSnippet } from "../domain/XtlSnippet";
@@ -43,7 +44,8 @@ export interface FunctionContext {
 
 const _defaultDesign: any = { "counters": { "u_column": 1, "u_row": 1 }, "body": { "rows": [{ "cells": [1], "columns": [{ "contents": [], "values": { "_meta": { "htmlID": "u_column_1", "htmlClassNames": "u_column" } } }], "values": { "backgroundColor": "", "backgroundImage": { "url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false }, "padding": "10px", "columnsBackgroundColor": "", "_meta": { "htmlID": "u_row_1", "htmlClassNames": "u_row" }, "selectable": true, "draggable": true, "deletable": true } }], "values": { "backgroundColor": "#e7e7e7", "backgroundImage": { "url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false }, "contentWidth": "800px", "fontFamily": { "label": "Arial", "value": "arial,helvetica,sans-serif" }, "_meta": { "htmlID": "u_body", "htmlClassNames": "u_body" } } } };
 
-export const App: React.FC<AppProps> = React.memo((props) => {
+/* eslint-disable react/display-name */
+export const App: React.FC<AppProps> = React.memo((props: AppProps) => {
   const editorRef = React.useRef<EditorRef>(null);
 
   const [designContext, dispatchDesign] = React.useReducer(designStateReducer, { design: { json: props.jsonInput ?? "" }, lastOrigin: 'external' } as DesignState);
@@ -71,49 +73,47 @@ export const App: React.FC<AppProps> = React.memo((props) => {
     }
   }, [ appState.editorReady ]);
 
-  const delayedDesignDispatch = debounce((design: DesignStateAction) => {
-    dispatchDesign(design);
-  }, 1000);
-
-  const retrieveMergeTags = (): Promise<Array<MergeTag>> => {
+  const retrieveMergeTags = (): Promise<MergeTags> => {
     if (window.location.hostname === localHost) {
-      return Promise.resolve([
+      return Promise.resolve(
         {
-          name: "Test 1",
-          mergeTags: [
-            {
-              name: "Test 1-1",
-              value: `\${{Snippet("salutation", { filter: '<filter><condition attribute="new_customlanguage" operator="eq" value="EN" /></filter>' })}}`,
-              sample: "Dear Frodo"
+            "Test 1": {
+                name: "Test 1",
+                mergeTags: {
+                    "Test 1-1": {
+                        name: "Test 1-1",
+                        value: `\${{Snippet("salutation", { filter: '<filter><condition attribute="new_customlanguage" operator="eq" value="EN" /></filter>' })}}`,
+                        sample: "Dear Frodo"
+                    }
+                },
+                sample: "Test 1 Example"
+            },
+            "Test 2": {
+                name: "Test 2",
+                value: `\${{RecordTable(Fetch("<fetch no-lock='true'><entity name='contact'><attribute name='ownerid' /><attribute name='createdon' /></entity></fetch>"), "contact", [{ name: "createdon", label: "Date", renderFunction: (record, column) => DateToString(ConvertDateTime(Value(column, { explicitTarget: record }), { userId: Value("ownerid", { explicitTarget: record }) }), { format: "yyyy-MM-dd hh:mm" }) }])}}`,
+                sample: "Test 2 Example"
             }
-          ],
-          sample: "Test 1 Example"
-        },
-        {
-          name: "Test 2",
-          value: `\${{RecordTable(Fetch("<fetch no-lock='true'><entity name='contact'><attribute name='ownerid' /><attribute name='createdon' /></entity></fetch>"), "contact", [{ name: "createdon", label: "Date", renderFunction: (record, column) => DateToString(ConvertDateTime(Value(column, { explicitTarget: record }), { userId: Value("ownerid", { explicitTarget: record }) }), { format: "yyyy-MM-dd hh:mm" }) }])}}`,
-          sample: "Test 2 Example"
         }
-      ]);
+        );
     }
 
     return WebApiClient.Retrieve({ entityName: "oss_xtlsnippet", queryParams: "?$select=oss_name,oss_uniquename,oss_xtlsnippetid,oss_xtlexpression,_oss_parentsnippet_value&$orderby=oss_name", returnAllPages: true })
       .then(({ value: snippets }: { value: Array<XtlSnippet> }) => {
-        const resolveTags = (children?: Array<XtlSnippet>): MergeTag[] => {
+        const resolveTags = (children?: Array<XtlSnippet>): MergeTags => {
           return (children ?? []).reduce((all, cur) => {
             const currentChildren: Array<XtlSnippet> = snippets.filter(s => s._oss_parentsnippet_value === cur.oss_xtlsnippetid);
             const snippetValue: string = cur.oss_uniquename ? `\${{Snippet("${cur.oss_uniquename}")}}` : `\${{${cur.oss_xtlexpression}}}`;
 
-            return [
+            return {
               ...all,
-              {
-                name: cur.oss_name,
+              [cur.oss_name ?? cur.oss_xtlsnippetid]: {
+                name: cur.oss_name ?? cur.oss_xtlsnippetid,
                 mergeTags: currentChildren.length ? resolveTags(currentChildren) : undefined,
                 value: currentChildren.length ? undefined : snippetValue,
                 sample: cur.oss_name
-              } as MergeTag
-            ];
-          }, [] as MergeTag[]);
+              }
+            };
+          }, {} as MergeTags);
         };
 
         const rootElements = snippets.filter(s => !s._oss_parentsnippet_value);
@@ -130,7 +130,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const onEditorUpdate = React.useCallback(async () => {
     const [designOutput, htmlOutput] = await getEditorContent();
 
-    delayedDesignDispatch({
+    dispatchDesign({
       origin: 'internal',
       payload: {
         json: designOutput,
@@ -147,7 +147,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   const editorBootstrap = async () => {
     console.log("[WYSIWYG_PCF] Bootstrapping unlayer editor");
 
-    editorRef.current!.addEventListener("design:updated", onEditorUpdate);
+    editorRef.current!.editor!.addEventListener("design:updated", onEditorUpdate);
 
     const functionContext: FunctionContext = {
       editorRef: editorRef.current!,
@@ -226,8 +226,10 @@ export const App: React.FC<AppProps> = React.memo((props) => {
   };
 
   const processExternalUpdate = () => {
-    if (props.jsonInput !== designContext.design.json) {
-      delayedDesignDispatch({
+    // When the iframe is the active element, the user is editing right now
+    // In these cases, the editor always wins and we don't want to apply external updates
+    if (props.jsonInput !== designContext.design.json && document.activeElement !== editorRef?.current?.editor?.frame?.iframe) {
+      dispatchDesign({
         origin: 'external',
         payload: {
           json: props.jsonInput ?? "",
@@ -247,9 +249,9 @@ export const App: React.FC<AppProps> = React.memo((props) => {
       const design = designContext.design;
       console.log(`[WYSIWYG_PCF]: ${new Date().toISOString()} - Loading external design: ${design?.json}`);
 
-      editorRef.current!.loadDesign((design && design.json && JSON.parse(design.json)) || appState.defaultDesign);
+      editorRef.current!.editor!.loadDesign((design && design.json && JSON.parse(design.json)) || appState.defaultDesign);
     }
-
+    
     const [json, html] = await getEditorContent();
     props.updateOutputs(json, html);
   };
@@ -270,7 +272,7 @@ export const App: React.FC<AppProps> = React.memo((props) => {
 
   const getEditorContent = (): Promise<[string, string]> => {
     return new Promise((resolve, reject) => {
-      editorRef.current!.exportHtml(({ design, html }: { design: { [key: string]: any }, html: string }) => {
+      editorRef.current!.editor!.exportHtml(({ design, html }: { design: { [key: string]: any }, html: string }) => {
         const designOutput = JSON.stringify(design);
         const htmlOutput = html;
 
