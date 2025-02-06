@@ -4,7 +4,7 @@ import { FunctionContext, ImageUploadSettings } from "../components/App";
 
 // https://learn.microsoft.com/en-us/power-apps/developer/data-platform/file-column-data?tabs=webapi#upload-files
 export const registerFileUploader = ({uploadEntity, uploadEntityFileNameField, uploadEntityBodyField, parentLookupName}: ImageUploadSettings, { editorRef, getFormContext, webApiClient }: FunctionContext) => {
-    editorRef.registerCallback('image', async function (file, done) {
+    editorRef.editor!.registerCallback('image', async function (file: any, done: ( args: { progress: number, url?: string}) => void) {
         var img = file.attachments[0];
 
         var fileRequest: WebApiClient.CreateParameters = {
